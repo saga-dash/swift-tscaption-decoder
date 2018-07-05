@@ -29,7 +29,7 @@ struct TransportPacket {
         self.transportScramblingControl = (bytes[3]&0xC0)>>6
         self.adaptationFieldControl = (bytes[3]&0x30)>>4
         self.continuityCounter = (bytes[3]&0x0F)
-        self.adaptationField = (adaptationFieldControl&0x02)>>2 == 1 ? AdaptationField(data) : nil
+        self.adaptationField = (adaptationFieldControl&0x02)>>1 == 1 ? AdaptationField(data) : nil
         let headerLength = 4 // Header
             + (adaptationField?.adaptationFieldLength ?? 0) // AdaptationFieldLength
             + (payloadUnitStartIndicator == 0x01 ? 1 : 0) // pointer_field
@@ -38,7 +38,7 @@ struct TransportPacket {
 }
 extension TransportPacket {
     var adaptationFlag: UInt8 {
-        return (adaptationFieldControl&0x02)>>2
+        return (adaptationFieldControl&0x02)>>1
     }
     var payloadFlag: UInt8 {
         return (adaptationFieldControl&0x01)
