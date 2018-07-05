@@ -16,7 +16,7 @@ struct ProgramMapTable {
     let PCR_PID: UInt16                 // 13  uimsbf
     //let _reserved2                    //  4  bslbf
     let programInfoLength: UInt16       // 12 uimsbf
-    let descriptor: [Descriptor]          // n byte
+    let descriptor: [Descriptor]        // n byte
     let stream: [Stream]                // n byte
     let CRC_32: UInt32    // 32 uimsbf
     init?(_ data: Data) {
@@ -47,7 +47,7 @@ struct ProgramMapTable {
             return nil
         }
         // -- Stream
-        var programInfoLength = programAssociationSection.sectionLength
+        var streamLength = programAssociationSection.sectionLength
             - 9 // PMT.sessionLength以下
             - numericCast(descriptorLengthConst) // descriptorの全体長
             - 4 // CRC_32
@@ -57,8 +57,8 @@ struct ProgramMapTable {
             array.append(stream)
             let sub = 5+Int(stream.esInfoLength) // 5byte+可変長(Stream)
             bytes = Array(bytes.suffix(bytes.count - sub))
-            programInfoLength -= numericCast(sub)
-        } while programInfoLength > 0
+            streamLength -= numericCast(sub)
+        } while streamLength > 0
         self.stream = array
         self.CRC_32 = UInt32(bytes[0])<<24 | UInt32(bytes[1])<<16 | UInt32(bytes[2])<<8 | UInt32(bytes[3])
     }
@@ -89,27 +89,29 @@ struct Descriptor {
 }
 extension Descriptor : CustomStringConvertible {
     var description: String {
-        return "descriptorTag: \(String(format: "0x%02x", descriptorTag))"
+        return "{descriptorTag: \(String(format: "0x%02x", descriptorTag))"
             + ", descriptorLength: \(String(format: "0x%02x", descriptorLength))"
+            + "}"
     }
 }
 struct Stream {
-    let streamId: UInt8                     //  8 uimsbf
+    let streamType: UInt8                   //  8 uimsbf
     //let _reserved1: UInt8                 //  3 bslbf
     let elementaryPID: UInt16               // 13 uimsbf
     //let _reserved2: UInt8                 //  4 bslbf
     let esInfoLength: UInt16                // 12 uimsbf
     // ToDo: 追加                            // 8 byte * esInfoLength
     init(_ bytes: [UInt8]) {
-        self.streamId = bytes[0]
+        self.streamType = bytes[0]
         self.elementaryPID = UInt16(bytes[1]&0x1F)<<8 | UInt16(bytes[2])
         self.esInfoLength = UInt16(bytes[3]&0x0F)<<8 | UInt16(bytes[4])
     }
 }
 extension Stream : CustomStringConvertible {
     var description: String {
-        return "streamId: \(String(format: "0x%02x", streamId))"
+        return "{streamType: \(String(format: "0x%02x", streamType))"
             + ", elementaryPID: \(String(format: "0x%02x", elementaryPID))"
             + ", esInfoLength: \(String(format: "0x%02x", esInfoLength))"
+            + "}"
     }
 }

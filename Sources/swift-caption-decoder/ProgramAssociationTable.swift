@@ -65,7 +65,8 @@ struct Program {
 }
 extension Program : CustomStringConvertible {
     var description: String {
-        return "programNumber: \(String(format: "0x%04x", programNumber))"
+        return "{programNumber: \(String(format: "0x%04x", programNumber))"
             + ", PID: \(String(format: "0x%04x", PID))"
+            + "}"
     }
 }
