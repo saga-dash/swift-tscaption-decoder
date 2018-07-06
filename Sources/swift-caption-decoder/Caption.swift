@@ -43,8 +43,8 @@ struct Caption {
         }
         let headerSize = bytes[2]&0x0F
         // 3 byte(headerSizeまで), 5 byte(文字の最小サイズ？)
-        if bytes.count<headerSize+3+5 {
-            print("payloadが足りない")
+        if bytes.count < headerSize+3+5 {
+            print("header分のpayloadが足りない")
             return nil
         }
         bytes = Array(bytes.suffix(bytes.count - numericCast(3+headerSize))) // 3 byte(headerSizeまで) + 可変長分
@@ -57,6 +57,10 @@ struct Caption {
         //self.STM = UInt64(bytes[5]&0x0F)<<32 | UInt64(bytes[6])<<24 | UInt64(bytes[7])<<16 | UInt64(bytes[8])<<8 | UInt64(bytes[9])
         //self.dataUnitLoopLength = UInt32(bytes[10])<<16 | UInt32(bytes[11])<<8 | UInt32(bytes[12])
         // ToDo: STM, dataUnitLoopLengthがない理由がわからない
+        if bytes.count < dataGroupSize {
+            print("payloadが足りない")
+            return nil
+        }
         bytes = Array(bytes.suffix(bytes.count - numericCast(9))) // 9 byte(Captionサイズ?)
         self.payload = Array(bytes.prefix(numericCast(dataGroupSize) - 4)) // 4 byte(dataGroupSizeからCaptionの終わりまで)
     }

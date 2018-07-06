@@ -86,7 +86,7 @@ while true {
         let newData: Data
         // 前のデータと結合
         if (stock[header.PID] != nil) {
-            newData = stock[header.PID]! + data.suffix(from: 4) // header 4byte
+            newData = stock[header.PID]! + header.payload
         } else {
             newData = data
         }
