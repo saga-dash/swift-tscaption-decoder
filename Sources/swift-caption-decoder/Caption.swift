@@ -8,10 +8,19 @@
 
 import Foundation
 
+let SYNCHRONIZED_PES = 0x80
+let ASYNCHRONOUS_PES = 0x81
+let UNUSED = 0xFF
+
+// ARIB STD-B24 第三編 第5章 独立 PES 伝送方式
 // ARIB STD-B36
 struct Caption {
     let header: TransportPacket
     let pesHeader: PacketizedElementaryStream
+    let dataIdentifier: UInt8               //  8 uimsbf
+    let privateStreamId: UInt8              //  8 uimsbf
+    //let reservedFutureUse: UInt8          //  4 uimsbf
+    let pesDataPacketHeaderLength: UInt8    //  4 uimsbf
     let dataGroupId: UInt8                  //  6 uimsbf
     let dataGroupVersion: UInt8             //  2 bslbf
     let dataGroupLinkNumber: UInt8          //  8 uimsbf
@@ -26,19 +35,20 @@ struct Caption {
     init?(_ data: Data) {
         self.header = TransportPacket(data)
         var bytes = header.payload
-        if bytes[0] == 0x00 && bytes[1] == 0x0 && bytes[2] == 0x01 {
-            self.pesHeader = PacketizedElementaryStream(data)
-            bytes = pesHeader.payload
-        } else {
+        if !(bytes[0] == 0x00 && bytes[1] == 0x0 && bytes[2] == 0x01) {
             return nil
         }
-        // ToDo: 定義どこ
-        if bytes[0] != 0x80 && bytes[1] != 0x81 {
+        self.pesHeader = PacketizedElementaryStream(data)
+        bytes = pesHeader.payload
+        self.dataIdentifier = bytes[0]
+        self.privateStreamId = bytes[1]
+        self.pesDataPacketHeaderLength = bytes[2]&0x0F
+        // 同期型 PES: 0x80, 非同期型 PES パケット: 0x81
+        if bytes[0] != SYNCHRONIZED_PES && bytes[1] != ASYNCHRONOUS_PES {
             print("字幕か文字スーパーである")
             return nil
         }
-        // ToDo: 調査
-        if bytes[1] != 0xFF {
+        if bytes[1] != UNUSED {
             return nil
         }
         let headerSize = bytes[2]&0x0F
@@ -62,7 +72,8 @@ struct Caption {
             return nil
         }
         bytes = Array(bytes.suffix(bytes.count - numericCast(9))) // 9 byte(Captionサイズ?)
-        self.payload = Array(bytes.prefix(numericCast(dataGroupSize) - 4)) // 4 byte(dataGroupSizeからCaptionの終わりまで)
+        bytes = Array(bytes.prefix(numericCast(dataGroupSize) - 4)) // 4 byte(dataGroupSizeからCaptionの終わりまで)
+        self.payload = bytes
     }
 }
 extension Caption : CustomStringConvertible {
