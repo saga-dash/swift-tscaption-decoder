@@ -10,7 +10,7 @@ import Foundation
 
 let file = FileHandle.standardInput
 let LENGTH = 188
-let PES_PRIVATE_DATA = 0x06
+let PES_PRIVATE_DATA = 0x06             // ARIB STD-B24 表 4-1 伝送方式の種類
 var targetPMTPID: UInt16 = 0xFFFF
 var targetCaptionPID: UInt16 = 0xFFFF
 var stock: Dictionary<UInt16, Data> = [:]
@@ -96,6 +96,11 @@ while true {
         }
         defer {
             stock.removeValue(forKey: header.PID)
+        }
+        // ARIB STD-B24 第一編 第 3 部 表 9-2 字幕データとデータグループ識別の対応
+        // 字幕管理: 0x00 or 0x20
+        if caption.dataGroupId == 0x00 || caption.dataGroupId == 0x20 {
+            continue
         }
         printHexDumpForBytes(bytes: caption.payload)
         print(caption)
