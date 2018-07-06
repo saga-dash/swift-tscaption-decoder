@@ -30,9 +30,11 @@ struct TransportPacket {
         self.adaptationFieldControl = (bytes[3]&0x30)>>4
         self.continuityCounter = (bytes[3]&0x0F)
         self.adaptationField = (adaptationFieldControl&0x02)>>1 == 1 ? AdaptationField(data) : nil
+        let isPes = bytes[4] == 0x00 && bytes[5] == 0x00 && bytes[6] == 0x01
+        let existPointerField = (payloadUnitStartIndicator == 0x01) && !isPes
         let headerLength = 4 // Header
             + (adaptationField?.adaptationFieldLength ?? 0) // AdaptationFieldLength
-            + (payloadUnitStartIndicator == 0x01 ? 1 : 0) // pointer_field
+            + (existPointerField ? 1 : 0) // pointer_field
         self.payload = Array(bytes.suffix(bytes.count - Int(headerLength))) // HeaderLength + Payload = 188
     }
 }

@@ -100,11 +100,14 @@ struct Stream {
     let elementaryPID: UInt16               // 13 uimsbf
     //let _reserved2: UInt8                 //  4 bslbf
     let esInfoLength: UInt16                // 12 uimsbf
-    // ToDo: 追加                            // 8 byte * esInfoLength
+    let descriptor: StreamDescriptor        // 1 byte * esInfoLength
     init(_ bytes: [UInt8]) {
         self.streamType = bytes[0]
         self.elementaryPID = UInt16(bytes[1]&0x1F)<<8 | UInt16(bytes[2])
         self.esInfoLength = UInt16(bytes[3]&0x0F)<<8 | UInt16(bytes[4])
+        let sub = 5 // Stream
+        let bytes = Array(bytes.suffix(bytes.count - sub))
+        self.descriptor = StreamDescriptor(bytes)
     }
 }
 extension Stream : CustomStringConvertible {
@@ -112,6 +115,27 @@ extension Stream : CustomStringConvertible {
         return "{streamType: \(String(format: "0x%02x", streamType))"
             + ", elementaryPID: \(String(format: "0x%02x", elementaryPID))"
             + ", esInfoLength: \(String(format: "0x%02x", esInfoLength))"
+            + ", descriptor: \(descriptor)"
+            + "}"
+    }
+}
+// ARIB STD-B10 第1部 図 6.2-17
+struct StreamDescriptor {
+    let descriptorTag: UInt8                //  8 uimsbf
+    let descriptorLength: UInt8             //  8 uimsbf
+    let componentTag: UInt8                 //  8 uimsbf
+    // ToDo: 追加
+    init(_ bytes: [UInt8]) {
+        self.descriptorTag = bytes[0]
+        self.descriptorLength = bytes[1]
+        self.componentTag = bytes[2]
+    }
+}
+extension StreamDescriptor : CustomStringConvertible {
+    var description: String {
+        return "{descriptorTag: \(String(format: "0x%02x", descriptorTag))"
+            + ", descriptorLength: \(String(format: "0x%02x", descriptorLength))"
+            + ", componentTag: \(String(format: "0x%02x", componentTag))"
             + "}"
     }
 }
