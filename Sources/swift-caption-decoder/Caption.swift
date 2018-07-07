@@ -88,9 +88,8 @@ struct Caption {
         var payloadLength = bytes.count
         var array: [DataUnit] = []
         repeat {
-            let dataUnit = DataUnit(bytes)
-            if dataUnit.unitSeparator == 0 {
-                break;
+            guard let dataUnit = DataUnit(bytes) else {
+                break
             }
             array.append(dataUnit)
             let sub = 5+Int(dataUnit.dataUnitSize) // 5byte+可変長(DataUnit)
@@ -121,14 +120,10 @@ struct DataUnit {
     let dataUnitParameter: UInt8      //  8 uimsbf
     let dataUnitSize: UInt32          // 24 uimsbf
     let payload: [UInt8]
-    init(_ bytes: [UInt8]) {
-        let isDataUnit = bytes[0] == 0x1F
-        if !isDataUnit {
-            self.unitSeparator = 0
-            self.dataUnitParameter = 0
-            self.dataUnitSize = 0
-            self.payload = []
-            return
+    init?(_ bytes: [UInt8]) {
+        // データユニット分離符号: 0x1F
+        if bytes[0] != 0x1F {
+            return nil
         }
         self.unitSeparator = bytes[0]
         self.dataUnitParameter = bytes[1]
