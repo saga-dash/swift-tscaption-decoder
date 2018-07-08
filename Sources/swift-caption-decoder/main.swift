@@ -102,8 +102,22 @@ while true {
         if caption.dataGroupId == 0x00 || caption.dataGroupId == 0x20 {
             continue
         }
-        printHexDumpForBytes(bytes: caption.payload)
-        print(caption)
+        //printHexDumpForBytes(bytes: caption.payload)
+        //print(caption)
+        for dataUnit in caption.dataUnit {
+            // ARIB STD-B24 第一編 第 3 部 表 9-12 データユニットの種類
+            // 本文: 0x20, 1バイト DRCS: 0x30, 2バイト DRCS: 0x31
+            switch dataUnit.dataUnitParameter {
+            case 0x20:
+                printHexDumpForBytes(bytes: dataUnit.payload)
+                let result = ARIB8charDecode(dataUnit)
+                print(result)
+            case 0x30, 0x31:
+                print("DRCSじゃん!")
+            default:
+                print("dataUnit.dataUnitParameter: \(dataUnit.dataUnitParameter)")
+            }
+        }
         continue
     }
 }
