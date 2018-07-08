@@ -109,9 +109,9 @@ while true {
             // 本文: 0x20, 1バイト DRCS: 0x30, 2バイト DRCS: 0x31
             switch dataUnit.dataUnitParameter {
             case 0x20:
-                printHexDumpForBytes(bytes: dataUnit.payload)
+                //printHexDumpForBytes(bytes: dataUnit.payload)
                 let result = ARIB8charDecode(dataUnit)
-                print(result)
+                print(result.str)
             case 0x30, 0x31:
                 print("DRCSじゃん!")
             default:
@@ -121,5 +121,3 @@ while true {
         continue
     }
 }
-print("fin")
-

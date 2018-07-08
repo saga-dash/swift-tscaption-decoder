@@ -59,7 +59,7 @@ struct Caption {
         let headerSize = bytes[2]&0x0F
         // 3 byte(headerSizeまで), 5 byte(文字の最小サイズ)
         if bytes.count < headerSize+3+5 {
-            print("header分のpayloadが足りない")
+            //print("header分のpayloadが足りない")
             return nil
         }
         bytes = Array(bytes.suffix(bytes.count - numericCast(3+headerSize))) // 3 byte(headerSizeまで) + 可変長分
@@ -79,7 +79,7 @@ struct Caption {
         }
         self.dataUnitLoopLength = UInt32(bytes[offset+5])<<16 | UInt32(bytes[offset+6])<<8 | UInt32(bytes[offset+7])
         if bytes.count < dataGroupSize + 5 { // 5 byte(DataUnit?) + 2 byte(CRC)
-            print("payloadが足りない")
+            //print("payloadが足りない")
             return nil
         }
         bytes = Array(bytes.suffix(bytes.count - numericCast(offset+9))) // 9 byte(Captionサイズ?)

@@ -1,4 +1,4 @@
-// 
+//
 //  ARIB8CharDecode.swift
 //  swift-caption-decoder
 //
@@ -8,6 +8,13 @@
 
 import Foundation
 
+
+var G0 = MFMode(charSet: .GSet, charTable: .KANJI, byte: 2)
+var G1 = MFMode(charSet: .GSet, charTable: .ASCII, byte: 1)
+var G2 = MFMode(charSet: .GSet, charTable: .HIRA, byte: 1)
+var G3 = MFMode(charSet: .GSet, charTable: .MACRO, byte: 1)
+var GL: UnsafeMutablePointer<MFMode> = UnsafeMutablePointer(&G0)
+var GR: UnsafeMutablePointer<MFMode> = UnsafeMutablePointer(&G2)
 
 func ARIB8charDecode(_ dataUnit: DataUnit) -> Unit {
     // ARIB STD-B24 第一編 第 3 部 第9章 字幕・文字スーパーの伝送 表 9-11 データユニット
@@ -20,20 +27,28 @@ func ARIB8charDecode(_ dataUnit: DataUnit) -> Unit {
     if dataUnit.dataUnitParameter != 0x20 {
         fatalError("本文じゃないやん！")
     }
+    G0 = MFMode(charSet: .GSet, charTable: .KANJI, byte: 2)
+    G1 = MFMode(charSet: .GSet, charTable: .ASCII, byte: 1)
+    G2 = MFMode(charSet: .GSet, charTable: .HIRA, byte: 1)
+    G3 = MFMode(charSet: .GSet, charTable: .MACRO, byte: 1)
+    GL = UnsafeMutablePointer(&G0)
+    GR = UnsafeMutablePointer(&G2)
+    return Analyze(dataUnit.payload)
+}
+func Analyze(_ bytes: [UInt8]) -> Unit {
     var index = 0
     var str = ""
     var controls: [Control] = []
-    while index < dataUnit.payload.count {
-        let byte = dataUnit.payload[index]
-        index += 1
+    while index < bytes.count {
+        let byte = bytes[index]
         guard let code = ControlCode(rawValue: byte) else {
             if byte <= 0x20 || (0x7F<byte && byte<=0xA0) {
                 fatalError("未定義の制御コード: \(String(format: "%02x", byte))")
             }
-            // ToDo: 変換するやーつ
-            str += "\(String(format: "%02x", byte))"
+            str += getChar(bytes, index: &index, GL: GL, GR: GR)
             continue
         }
+        index += 1
         switch code {
         case .NULL:
             controls.append(Control(code))
@@ -52,28 +67,183 @@ func ARIB8charDecode(_ dataUnit: DataUnit) -> Unit {
         case .APR:
             controls.append(Control(code))
         case .LS1:
-            print("LS1ないで")
-            // *****
+            GL = UnsafeMutablePointer<MFMode>(&G1)
         case .LS0:
-            print("LS0ないで")
-            // *****
+            GL = UnsafeMutablePointer<MFMode>(&G0)
         case .PAPF:
-            controls.append(Control(code, payload: [dataUnit.payload[index]]))
+            controls.append(Control(code, payload: [bytes[index]]))
             index += 1
         case .CAN:
             controls.append(Control(code))
         case .SS2:
-            print("SS2ないで")
-        // *****
+            str += getChar(bytes, index: &index, mode: G2)
         case .ESC:
-            print("ESCないで")
-        // *****
+            let param = bytes[index]
+            if param == 0x6E {
+                // G2をGLに割り当てる
+                GL = UnsafeMutablePointer<MFMode>(&G2)
+                index += 1
+                continue
+            } else if param == 0x6F {
+                // G3をGLに割り当てる
+                GL = UnsafeMutablePointer<MFMode>(&G3)
+                index += 1
+                continue
+            } else if param == 0x7E {
+                // G1をGRに割り当てる
+                GR = UnsafeMutablePointer<MFMode>(&G1)
+                index += 1
+                continue
+            } else if param == 0x7D {
+                // G2をGRに割り当てる
+                GR = UnsafeMutablePointer<MFMode>(&G2)
+                index += 1
+                continue
+            } else if param == 0x7C {
+                // G3をGRに割り当てる
+                GR = UnsafeMutablePointer<MFMode>(&G3)
+                index += 1
+                continue
+            }
+            if param == 0x24 {
+                // 2 byte テーブルを参照
+                let param2 = bytes[index+1]
+                if param2 > 0x2F {
+                    // param2はテーブル(Gセット)
+                    // GセットをG0に割り当てる
+                    guard let table = CharTable(rawValue: param2) else {
+                        fatalError("未定義のテーブル1: \(String(format: "%02x", param2))")
+                    }
+                    let mode = MFMode(charSet: .GSet, charTable: table, byte: 2)
+                    setMode(src: mode, dist: &G0)
+                    index += 2
+                    continue
+                }  else if param2 == 0x29 {
+                    // GセットをG1に割り当てる
+                    let param3 = bytes[index+2]
+                    guard let table = CharTable(rawValue: param3) else {
+                        fatalError("未定義のテーブル2: \(String(format: "%02x", param3))")
+                    }
+                    let mode = MFMode(charSet: .GSet, charTable: table, byte: 2)
+                    setMode(src: mode, dist: &G1)
+                    index += 3
+                    continue
+                } else if param2 == 0x2A {
+                    // GセットをG2に割り当てる
+                    let param3 = bytes[index+2]
+                    guard let table = CharTable(rawValue: param3) else {
+                        fatalError("未定義のテーブル3: \(String(format: "%02x", param3))")
+                    }
+                    let mode = MFMode(charSet: .GSet, charTable: table, byte: 2)
+                    setMode(src: mode, dist: &G2)
+                    index += 3
+                    continue
+                } else if param2 == 0x2B {
+                    // GセットをG3に割り当てる
+                    let param3 = bytes[index+2]
+                    guard let table = CharTable(rawValue: param3) else {
+                        fatalError("未定義のテーブル4: \(String(format: "%02x", param3))")
+                    }
+                    let mode = MFMode(charSet: .GSet, charTable: table, byte: 2)
+                    setMode(src: mode, dist: &G3)
+                    index += 3
+                    continue
+                }
+            } else if param == 0x28 {
+                // GセットをG0に割り当てる
+                let param2 = bytes[index+1]
+                guard let table = CharTable(rawValue: param2) else {
+                    if param2 == 0x20 {
+                        // ToDo: マクロのみ定義
+                        let param3 = bytes[index+2]
+                        guard let table = CharTable(rawValue: param3) else {
+                            fatalError("未定義のテーブル5: \(String(format: "%02x", param2))")
+                        }
+                        // ToDo: byte==1 マクロ
+                        let mode = MFMode(charSet: .GSet, charTable: table, byte: 1)
+                        setMode(src: mode, dist: &G3)
+                        index += 3
+                        continue
+                    }
+                    fatalError("未定義のテーブル5: \(String(format: "%02x", param2))")
+                }
+                let mode = MFMode(charSet: .GSet, charTable: table, byte: 1)
+                setMode(src: mode, dist: &G0)
+                index += 2
+                continue
+            } else if param == 0x29 {
+                // GセットをG1に割り当てる
+                let param2 = bytes[index+1]
+                guard let table = CharTable(rawValue: param2) else {
+                    if param2 == 0x20 {
+                        // ToDo: マクロのみ定義
+                        let param3 = bytes[index+2]
+                        guard let table = CharTable(rawValue: param3) else {
+                            fatalError("未定義のテーブル6: \(String(format: "%02x", param2))")
+                        }
+                        // ToDo: byte==1 マクロ
+                        let mode = MFMode(charSet: .GSet, charTable: table, byte: 1)
+                        setMode(src: mode, dist: &G3)
+                        index += 3
+                        continue
+                    }
+                    fatalError("未定義のテーブル6: \(String(format: "%02x", param2))")
+                }
+                let mode = MFMode(charSet: .GSet, charTable: table, byte: 1)
+                setMode(src: mode, dist: &G1)
+                index += 2
+                continue
+            } else if param == 0x2A {
+                // GセットをG2に割り当てる
+                let param2 = bytes[index+1]
+                guard let table = CharTable(rawValue: param2) else {
+                    if param2 == 0x20 {
+                        // ToDo: マクロのみ定義
+                        let param3 = bytes[index+2]
+                        guard let table = CharTable(rawValue: param3) else {
+                            fatalError("未定義のテーブル7: \(String(format: "%02x", param2))")
+                        }
+                        // ToDo: byte==1 マクロ
+                        let mode = MFMode(charSet: .GSet, charTable: table, byte: 1)
+                        setMode(src: mode, dist: &G3)
+                        index += 3
+                        continue
+                    }
+                    fatalError("未定義のテーブル7: \(String(format: "%02x", param2))")
+                }
+                let mode = MFMode(charSet: .GSet, charTable: table, byte: 1)
+                setMode(src: mode, dist: &G2)
+                index += 2
+                continue
+            } else if param == 0x2B {
+                // GセットをG3に割り当てる
+                let param2 = bytes[index+1]
+                guard let table = CharTable(rawValue: param2) else {
+                    if param2 == 0x20 {
+                        // ToDo: マクロのみ定義
+                        let param3 = bytes[index+2]
+                        guard let table = CharTable(rawValue: param3) else {
+                            fatalError("未定義のテーブル8: \(String(format: "%02x", param2))")
+                        }
+                        // ToDo: byte==1 マクロ
+                        let mode = MFMode(charSet: .GSet, charTable: table, byte: 1)
+                        setMode(src: mode, dist: &G3)
+                        index += 3
+                        continue
+                    }
+                    fatalError("未定義のテーブル8: \(String(format: "%02x", param2))")
+                }
+                let mode = MFMode(charSet: .GSet, charTable: table, byte: 1)
+                setMode(src: mode, dist: &G3)
+                index += 2
+                continue
+            }
+            fatalError("未定義のパラメータ: \(String(format: "%02x", param))")
         case .APS:
-            controls.append(Control(code, payload: [dataUnit.payload[index], dataUnit.payload[index+1]]))
+            controls.append(Control(code, payload: [bytes[index], bytes[index+1]]))
             index += 2
         case .SS3:
-            print("SS3ないで")
-        // *****
+            str += getChar(bytes, index: &index, mode: G3)
         case .RS:
             controls.append(Control(code))
         case .US:
@@ -105,66 +275,114 @@ func ARIB8charDecode(_ dataUnit: DataUnit) -> Unit {
         case .NSZ:
             controls.append(Control(code))
         case .SZX:
-            controls.append(Control(code, payload: [dataUnit.payload[index]]))
+            controls.append(Control(code, payload: [bytes[index]]))
             index += 1
         case .COL:
-            if dataUnit.payload[index] < 0x40 {
-                controls.append(Control(code, payload: [dataUnit.payload[index], dataUnit.payload[index+1]]))
+            if bytes[index] < 0x40 {
+                controls.append(Control(code, payload: [bytes[index], bytes[index+1]]))
                 index += 2
             } else {
-                controls.append(Control(code, payload: [dataUnit.payload[index]]))
+                controls.append(Control(code, payload: [bytes[index]]))
                 index += 1
             }
         case .FLC:
-            controls.append(Control(code, payload: [dataUnit.payload[index]]))
+            controls.append(Control(code, payload: [bytes[index]]))
             index += 1
         case .CDC:
-            if dataUnit.payload[index] < 0x40 {
-                controls.append(Control(code, payload: [dataUnit.payload[index], dataUnit.payload[index+1]]))
+            if bytes[index] < 0x40 {
+                controls.append(Control(code, payload: [bytes[index], bytes[index+1]]))
                 index += 2
             } else {
-                controls.append(Control(code, payload: [dataUnit.payload[index]]))
+                controls.append(Control(code, payload: [bytes[index]]))
                 index += 1
             }
         case .POL:
-            controls.append(Control(code, payload: [dataUnit.payload[index]]))
+            controls.append(Control(code, payload: [bytes[index]]))
             index += 1
         case .WMM:
-            controls.append(Control(code, payload: [dataUnit.payload[index]]))
+            controls.append(Control(code, payload: [bytes[index]]))
             index += 1
         case .MACRO:
-            controls.append(Control(code, payload: [dataUnit.payload[index]]))
+            // ToDo:
+            fatalError("マクロよくわからん")
+            controls.append(Control(code, payload: [bytes[index]]))
             index += 1
         case .HLC:
-            controls.append(Control(code, payload: [dataUnit.payload[index]]))
+            controls.append(Control(code, payload: [bytes[index]]))
             index += 1
         case .RPC:
-            controls.append(Control(code, payload: [dataUnit.payload[index]]))
+            controls.append(Control(code, payload: [bytes[index]]))
             index += 1
         case .SPL:
             controls.append(Control(code))
         case .STL:
             controls.append(Control(code))
         case .CSI:
-            let control = CSI(dataUnit.payload, index: &index)
+            let control = CSI(bytes, index: &index)
             controls.append(control)
         case .TIME:
-            let param1 = dataUnit.payload[index]
+            let param1 = bytes[index]
             // 処理待ち: 0x20
             if param1 == 0x20 {
-                controls.append(Control(code, payload: [dataUnit.payload[index+1]]))
+                controls.append(Control(code, payload: [bytes[index+1]]))
                 index += 2
                 continue
             }
             // 時刻制御モード(TMD)
             assert(param1 == 0x28, "時刻制御モードのパラメータ1がおかしい: \(String(format: "0x%02x", param1))")
-            controls.append(Control(code, payload: [param1, dataUnit.payload[index+1]]))
+            controls.append(Control(code, payload: [param1, bytes[index+1]]))
             index += 2
         default:
             fatalError("command: \(code), code: \(String(format: "0x%02x", byte)), まだ定義してないよ!")
         }
     }
     return Unit(str: str, control: controls)
+}
+func setMode(src: MFMode, dist: inout MFMode) {
+    dist = src
+}
+func getChar(_ bytes: [UInt8], index: inout Int, GL: UnsafeMutablePointer<MFMode>, GR: UnsafeMutablePointer<MFMode>) -> String {
+    let c = bytes[index]
+    if c < 0x7F {
+        // GL符号領域
+        let str = getChar(bytes, index: &index, mode: GL.pointee)
+        return str
+    } else {
+        // GR符号領域
+        let str = getChar(bytes, index: &index, mode: GR.pointee)
+        return str
+    }
+}
+func getChar(_ bytes: [UInt8], index: inout Int, mode: MFMode) -> String {
+    //print("\(String(format: "%02x", bytes[index]))", mode)
+    switch mode.charTable {
+    case .ASCII, .PROP_ASCII:
+        let str = AsciiTable[Int(bytes[index]&0x7F-0x21)]
+        index += Int(mode.byte)
+        return str
+    case .HIRA, .PROP_HIRA:
+        let str = HiraTable[Int(bytes[index]&0x7F-0x21)]
+        index += Int(mode.byte)
+        return str
+    case .KANA, .JISX_KANA, .PROP_KANA:
+        let str = KanaTable[Int(bytes[index]&0x7F-0x21)]
+        index += Int(mode.byte)
+        return str
+    case .KANJI, .JIS_KANJI1, .JIS_KANJI2, .KIGOU:
+        let str = jis_to_utf16(bytes[index]&0x7F, bytes[index+1]&0x7F)
+        index += Int(mode.byte)
+        return str
+    case .MOSAIC_A, .MOSAIC_B, .MOSAIC_C, .MOSAIC_D:
+        let str = "%%%%"
+        index += Int(mode.byte)
+        return str
+    case .MACRO:
+        _ = Analyze(DefaultMacro[Int(bytes[index]&0x0F)])
+        index += Int(mode.byte)
+        return ""
+    default:
+        fatalError("まだだよ。 \(mode)")
+    }
 }
 func CSI(_ bytes: [UInt8], index: inout Int) -> Control {
     var param = 0
@@ -258,8 +476,8 @@ enum ControlCode: UInt8 {
     case STL    = 0x9A
     case CSI    = 0x9B
     case TIME   = 0x9D
-//    case 10/0   = 0xA0
-//    case 15/15  = 0xFF
+    //    case 10/0   = 0xA0
+    //    case 15/15  = 0xFF
 }
 enum CSIChar: UInt8 {
     case SWF    = 0x53
@@ -285,4 +503,39 @@ enum CSIChar: UInt8 {
     case ACS    = 0x69
     case UED    = 0x6A
     case SCS    = 0x6F
+}
+struct MFMode {
+    let charSet: CharSet
+    let charTable: CharTable
+    let byte: UInt8
+}
+extension MFMode : CustomStringConvertible {
+    var description: String {
+        return "MFMode(charSet: \(charSet)"
+            + ", charTable: \(charTable)"
+            + ", byte: \(byte)"
+            + ")"
+    }
+}
+enum CharSet {
+    case GSet
+    case DRCS
+}
+enum CharTable: UInt8 {
+    case JIS_KANJI1     = 0x39 //JIS互換漢字1面
+    case JIS_KANJI2     = 0x3A //JIS互換漢字2面
+    case KIGOU          = 0x3B //追加記号
+    case ASCII          = 0x4A //英数
+    case HIRA           = 0x30 //平仮名
+    case KANA           = 0x31 //片仮名
+    case KANJI          = 0x42 //漢字
+    case MOSAIC_A       = 0x32 //モザイクA
+    case MOSAIC_B       = 0x33 //モザイクB
+    case MOSAIC_C       = 0x34 //モザイクC
+    case MOSAIC_D       = 0x35 //モザイクD
+    case PROP_ASCII     = 0x36 //プロポーショナル英数
+    case PROP_HIRA      = 0x37 //プロポーショナル平仮名
+    case PROP_KANA      = 0x38 //プロポーショナル片仮名
+    case JISX_KANA      = 0x49 //JIX X0201片仮名}
+    case MACRO          = 0x70 //マクロ
 }
