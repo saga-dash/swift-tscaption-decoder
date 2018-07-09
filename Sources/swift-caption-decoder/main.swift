@@ -76,7 +76,7 @@ while true {
         // 字幕: 0x30, 0x87
         // 文字スーパー: 0x38, 0x88
         // ToDo: 定義探す
-        guard let stream = streams.first(where: {$0.descriptor.componentTag==0x30}) else {
+        guard let stream = streams.first(where:{nil != $0.descriptor.first(where:{$0.componentTag == 0x30})}) else {
             print("字幕無いよ2")
             continue
         }
