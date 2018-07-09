@@ -46,6 +46,12 @@ while true {
         let newData: Data
         // 前のデータと結合
         if (stock[header.PID] != nil) {
+            // ストックが存在し先頭TSならデータがおかしいので置き換える
+            if header.payloadUnitStartIndicator == 0x01 {
+                //stock.removeValue(forKey: header.PID)
+                stock[header.PID] = data
+                continue
+            }
             newData = stock[header.PID]! + data.suffix(from: 4) // header 4byte
         } else {
             newData = data
