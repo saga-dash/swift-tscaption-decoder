@@ -672,7 +672,7 @@ let _jis2utf16: [UInt16] = [
 
 let UNKNOWN: UInt16 = 0x30fb
 
-func jis_to_utf16(_ c1: UInt8, _ c2: UInt8) -> String
+func jisToUtf16(_ c1: UInt8, _ c2: UInt8) -> String
 {
     if c1 < 0x21 || c1 > 0x7e {
         return "?"

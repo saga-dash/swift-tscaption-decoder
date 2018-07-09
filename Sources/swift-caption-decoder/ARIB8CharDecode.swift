@@ -41,6 +41,7 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
     var controls: [Control] = []
     while index < bytes.count {
         let byte = bytes[index]
+        // 制御コード?
         guard let code = ControlCode(rawValue: byte) else {
             if byte <= 0x20 || (0x7F<byte && byte<=0xA0) {
                 fatalError("未定義の制御コード: \(String(format: "%02x", byte))")
@@ -48,7 +49,7 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
             str += getChar(bytes, index: &index, GL: GL, GR: GR)
             continue
         }
-        index += 1
+        index += 1 // 制御コード分
         switch code {
         case .NULL:
             controls.append(Control(code))
@@ -369,10 +370,11 @@ func getChar(_ bytes: [UInt8], index: inout Int, mode: MFMode) -> String {
         index += Int(mode.byte)
         return str
     case .KANJI, .JIS_KANJI1, .JIS_KANJI2, .KIGOU:
-        let str = jis_to_utf16(bytes[index]&0x7F, bytes[index+1]&0x7F)
+        let str = jisToUtf16(bytes[index]&0x7F, bytes[index+1]&0x7F)
         index += Int(mode.byte)
         return str
     case .MOSAIC_A, .MOSAIC_B, .MOSAIC_C, .MOSAIC_D:
+        // ToDo
         let str = "%%%%"
         index += Int(mode.byte)
         return str
