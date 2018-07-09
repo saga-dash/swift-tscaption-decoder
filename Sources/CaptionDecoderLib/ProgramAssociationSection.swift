@@ -8,21 +8,21 @@
 
 import Foundation
 
-struct ProgramAssociationSection {
-    let header: TransportPacket
-    let tableId: UInt8                      //  8  uimsbf
-    let sectionSyntaxIndicator: UInt8       //  1  bslbf
-    //'0'                                   //  1  bslbf
-    //let _reserved1: UInt8                 //  2  bslbf
-    let sectionLength: UInt16               // 12  uimsbf
-    let transportStreamId: UInt16           // 16  uimsbf
-    //let _reserved2: UInt8                 //  2  bslbf
-    let versionNumber: UInt8                //  5  uimsbf
-    let currentNextIndicator: UInt8         //  1  bslbf
-    let sectionNumber: UInt8                //  8  uimsbf
-    let lastSectionNumber: UInt8            //  8  uimsbf
-    let payload: [UInt8]                    //  n  byte
-    init(_ data: Data) {
+public struct ProgramAssociationSection {
+    public let header: TransportPacket
+    public let tableId: UInt8                      //  8  uimsbf
+    public let sectionSyntaxIndicator: UInt8       //  1  bslbf
+    //'0'                                          //  1  bslbf
+    //public let _reserved1: UInt8                 //  2  bslbf
+    public let sectionLength: UInt16               // 12  uimsbf
+    public let transportStreamId: UInt16           // 16  uimsbf
+    //public let _reserved2: UInt8                 //  2  bslbf
+    public let versionNumber: UInt8                //  5  uimsbf
+    public let currentNextIndicator: UInt8         //  1  bslbf
+    public let sectionNumber: UInt8                //  8  uimsbf
+    public let lastSectionNumber: UInt8            //  8  uimsbf
+    public let payload: [UInt8]                    //  n  byte
+    public init(_ data: Data) {
         self.header = TransportPacket(data)
         let bytes = header.payload
         self.tableId = bytes[0]
@@ -37,7 +37,7 @@ struct ProgramAssociationSection {
     }
 }
 extension ProgramAssociationSection : CustomStringConvertible {
-    var description: String {
+    public var description: String {
         return "ProgramAssociationSection(tableId: \(String(format: "0x%02x", tableId))"
             + ", sectionSyntaxIndicator: \(sectionSyntaxIndicator)"
             + ", sectionLength: \(String(format: "0x%04x", sectionLength))"
@@ -50,7 +50,7 @@ extension ProgramAssociationSection : CustomStringConvertible {
     }
 }
 extension ProgramAssociationSection {
-    var hexDump: [UInt8] {
+    public var hexDump: [UInt8] {
         return header.payload
     }
 }

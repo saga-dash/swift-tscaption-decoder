@@ -9,17 +9,17 @@
 import Foundation
 
 // PMT
-struct ProgramMapTable {
-    let header: TransportPacket
-    let programAssociationSection: ProgramAssociationSection
-    //let _reserved1                    //  3  bslbf
-    let PCR_PID: UInt16                 // 13  uimsbf
-    //let _reserved2                    //  4  bslbf
-    let programInfoLength: UInt16       // 12 uimsbf
-    let descriptor: [Descriptor]        // n byte
-    let stream: [Stream]                // n byte
-    let CRC_32: UInt32    // 32 uimsbf
-    init?(_ data: Data) {
+public struct ProgramMapTable {
+    public let header: TransportPacket
+    public let programAssociationSection: ProgramAssociationSection
+    //public let _reserved1                     //  3  bslbf
+    public let PCR_PID: UInt16                  // 13  uimsbf
+    //public let _reserved2                     //  4  bslbf
+    public let programInfoLength: UInt16        // 12 uimsbf
+    public let descriptor: [Descriptor]         // n byte
+    public let stream: [Stream]                 // n byte
+    public let CRC_32: UInt32                   // 32 uimsbf
+    public init?(_ data: Data) {
         self.header = TransportPacket(data)
         self.programAssociationSection = ProgramAssociationSection(data)
         var bytes = programAssociationSection.payload
@@ -64,7 +64,7 @@ struct ProgramMapTable {
     }
 }
 extension ProgramMapTable : CustomStringConvertible {
-    var description: String {
+    public var description: String {
         return "PMT(PCR_PID: \(String(format: "0x%04x", PCR_PID))"
             + ", descriptor: \(descriptor)"
             + ", stream: \(stream)"
@@ -73,35 +73,35 @@ extension ProgramMapTable : CustomStringConvertible {
     }
 }
 extension ProgramMapTable {
-    var hexDump: [UInt8] {
+    public var hexDump: [UInt8] {
         return programAssociationSection.payload
     }
 }
 
-struct Descriptor {
-    let descriptorTag: UInt8               //  8 uimsbf
-    let descriptorLength: UInt8            //  8 uimsbf
+public struct Descriptor {
+    public let descriptorTag: UInt8               //  8 uimsbf
+    public let descriptorLength: UInt8            //  8 uimsbf
     // ToDo: 追加
-    init(_ bytes: [UInt8]) {
+    public init(_ bytes: [UInt8]) {
         self.descriptorTag = bytes[0]
         self.descriptorLength = bytes[1]
     }
 }
 extension Descriptor : CustomStringConvertible {
-    var description: String {
+    public var description: String {
         return "{descriptorTag: \(String(format: "0x%02x", descriptorTag))"
             + ", descriptorLength: \(String(format: "0x%02x", descriptorLength))"
             + "}"
     }
 }
-struct Stream {
-    let streamType: UInt8                   //  8 uimsbf
-    //let _reserved1: UInt8                 //  3 bslbf
-    let elementaryPID: UInt16               // 13 uimsbf
-    //let _reserved2: UInt8                 //  4 bslbf
-    let esInfoLength: UInt16                // 12 uimsbf
-    let descriptor: [StreamDescriptor]        // 1 byte * esInfoLength
-    init(_ bytes: [UInt8]) {
+public struct Stream {
+    public let streamType: UInt8                   //  8 uimsbf
+    //public let _reserved1: UInt8                 //  3 bslbf
+    public let elementaryPID: UInt16               // 13 uimsbf
+    //public let _reserved2: UInt8                 //  4 bslbf
+    public let esInfoLength: UInt16                // 12 uimsbf
+    public let descriptor: [StreamDescriptor]        // 1 byte * esInfoLength
+    public init(_ bytes: [UInt8]) {
         self.streamType = bytes[0]
         self.elementaryPID = UInt16(bytes[1]&0x1F)<<8 | UInt16(bytes[2])
         var esInfoLengthConst = UInt16(bytes[3]&0x0F)<<8 | UInt16(bytes[4])
@@ -120,7 +120,7 @@ struct Stream {
     }
 }
 extension Stream : CustomStringConvertible {
-    var description: String {
+    public var description: String {
         return "{streamType: \(String(format: "0x%02x", streamType))"
             + ", elementaryPID: \(String(format: "0x%02x", elementaryPID))"
             + ", esInfoLength: \(String(format: "0x%02x", esInfoLength))"
@@ -129,11 +129,11 @@ extension Stream : CustomStringConvertible {
     }
 }
 // ARIB STD-B10 第1部 図 6.2-17
-struct StreamDescriptor {
-    let descriptorTag: UInt8                //  8 uimsbf
-    let descriptorLength: UInt8             //  8 uimsbf
-    let componentTag: UInt8                 //  8 uimsbf
-    let payload: [UInt8]                    //  1 byte * n
+public struct StreamDescriptor {
+    public let descriptorTag: UInt8                //  8 uimsbf
+    public let descriptorLength: UInt8             //  8 uimsbf
+    public let componentTag: UInt8                 //  8 uimsbf
+    public let payload: [UInt8]                    //  1 byte * n
     init(_ bytes: [UInt8]) {
         self.descriptorTag = bytes[0]
         self.descriptorLength = bytes[1]
@@ -147,7 +147,7 @@ struct StreamDescriptor {
     }
 }
 extension StreamDescriptor : CustomStringConvertible {
-    var description: String {
+    public var description: String {
         return "{descriptorTag: \(String(format: "0x%02x", descriptorTag))"
             + ", descriptorLength: \(String(format: "0x%02x", descriptorLength))"
             + ", componentTag: \(String(format: "0x%02x", componentTag))"

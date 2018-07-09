@@ -8,18 +8,18 @@
 
 import Foundation
 
-struct TransportPacket {
-    let syncByte: UInt8                      //  8  bslbf
-    let transportErrorIndicator: UInt8       //  1  bslbf
-    let payloadUnitStartIndicator: UInt8     //  1  bslbf
-    let transportPriority: UInt8             //  1  bslbf
-    let PID: UInt16                          // 13  uimsbf
-    let transportScramblingControl: UInt8    //  2  bslbf
-    let adaptationFieldControl: UInt8        //  2  bslbf
-    let continuityCounter: UInt8             //  4  uimsbf
-    let adaptationField: AdaptationField?    //  n  byte
-    let payload: [UInt8]                     //  n  byte
-    init(_ data: Data) {
+public struct TransportPacket {
+    public let syncByte: UInt8                      //  8  bslbf
+    public let transportErrorIndicator: UInt8       //  1  bslbf
+    public let payloadUnitStartIndicator: UInt8     //  1  bslbf
+    public let transportPriority: UInt8             //  1  bslbf
+    public let PID: UInt16                          // 13  uimsbf
+    public let transportScramblingControl: UInt8    //  2  bslbf
+    public let adaptationFieldControl: UInt8        //  2  bslbf
+    public let continuityCounter: UInt8             //  4  uimsbf
+    public let adaptationField: AdaptationField?    //  n  byte
+    public let payload: [UInt8]                     //  n  byte
+    public init(_ data: Data) {
         let bytes = [UInt8](data)
         self.syncByte = bytes[0]
         self.transportErrorIndicator = (bytes[1]&0x80)>>7
@@ -38,29 +38,29 @@ struct TransportPacket {
     }
 }
 extension TransportPacket {
-    var adaptationFlag: UInt8 {
+    public var adaptationFlag: UInt8 {
         return (adaptationFieldControl&0x02)>>1
     }
-    var payloadFlag: UInt8 {
+    public var payloadFlag: UInt8 {
         return (adaptationFieldControl&0x01)
     }
 }
-struct AdaptationField {
-    let adaptationFieldLength: UInt8
-    //var nonDiscontinuityIndicator: UInt8
-    //var randomAccessIndicator: UInt8
-    //var elementaryStreamPriorityIndicator: UInt8
-    //var flag: UInt8
-    //var optionField:
-    //var stuffingByte:
-    init(_ data: Data) {
+public struct AdaptationField {
+    public let adaptationFieldLength: UInt8
+    //public var nonDiscontinuityIndicator: UInt8
+    //public var randomAccessIndicator: UInt8
+    //public var elementaryStreamPriorityIndicator: UInt8
+    //public var flag: UInt8
+    //public var optionField:
+    //public var stuffingByte:
+    public init(_ data: Data) {
         let bytes = [UInt8](data)
         let offset = 4  // TransportPacket
         self.adaptationFieldLength = bytes[offset + 0]
     }
 }
 extension TransportPacket : CustomStringConvertible {
-    var description: String {
+    public var description: String {
         return "TransportPacket(PID: \(String(format: "0x%05x", PID))"
             + ", syncByte: \(String(format: "0x%02x", syncByte))"
             + ", transportErrorIndicator: \(transportErrorIndicator)"

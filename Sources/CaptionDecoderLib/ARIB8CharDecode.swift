@@ -16,7 +16,7 @@ var G3 = MFMode(charSet: .GSet, charTable: .MACRO, byte: 1)
 var GL: UnsafeMutablePointer<MFMode> = UnsafeMutablePointer(&G0)
 var GR: UnsafeMutablePointer<MFMode> = UnsafeMutablePointer(&G2)
 
-func ARIB8charDecode(_ dataUnit: DataUnit) -> Unit {
+public func ARIB8charDecode(_ dataUnit: DataUnit) -> Unit {
     // ARIB STD-B24 第一編 第 3 部 第9章 字幕・文字スーパーの伝送 表 9-11 データユニット
     // データユニット分離符号: 0x1F
     if dataUnit.unitSeparator != 0x1F {
@@ -410,22 +410,22 @@ func CSI(_ bytes: [UInt8], index: inout Int) -> Control {
     let control = Control(.CSI, command: command, payload: Array(bytes[0..<param]))
     return control
 }
-struct Unit {
-    let str: String
-    let control: [Control]
+public struct Unit {
+    public let str: String
+    public let control: [Control]
 }
-struct Control {
-    let command: String
-    let code: ControlCode
-    let payload: [UInt8]
-    init(_ code: ControlCode, command: String? = nil, payload: [UInt8] = []) {
+public struct Control {
+    public let command: String
+    public let code: ControlCode
+    public let payload: [UInt8]
+    public init(_ code: ControlCode, command: String? = nil, payload: [UInt8] = []) {
         self.command = command ?? "\(code)"
         self.code = code
         self.payload = payload
     }
 }
 extension Control : CustomStringConvertible {
-    var description: String {
+    public var description: String {
         return "Control(command: \(command)"
             + ", code: \(code)"
             + ", payload: \(payload)"
@@ -433,7 +433,7 @@ extension Control : CustomStringConvertible {
     }
 }
 
-enum ControlCode: UInt8 {
+public enum ControlCode: UInt8 {
     case NULL   = 0x00
     case BEL    = 0x07
     case APB    = 0x08

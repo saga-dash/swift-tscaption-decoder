@@ -9,12 +9,12 @@
 import Foundation
 
 // PAT
-struct ProgramAssociationTable {
-    let header: TransportPacket
-    let programAssociationSection: ProgramAssociationSection
-    let programs: [Program]
-    let CRC_32: UInt32    // 32 uimsbf
-    init(_ data: Data) {
+public struct ProgramAssociationTable {
+    public let header: TransportPacket
+    public let programAssociationSection: ProgramAssociationSection
+    public let programs: [Program]
+    public let CRC_32: UInt32    // 32 uimsbf
+    public init(_ data: Data) {
         self.header = TransportPacket(data)
         self.programAssociationSection = ProgramAssociationSection(data)
         var bytes = programAssociationSection.payload
@@ -35,7 +35,7 @@ struct ProgramAssociationTable {
     }
 }
 extension ProgramAssociationTable : CustomStringConvertible {
-    var description: String {
+    public var description: String {
         return "PAT(networkId: \(String(format: "0x%02x", networkId))"
             + ", programs: \(programs)"
             + ", CRC_32: \(String(format: "0x%08x", CRC_32))"
@@ -43,10 +43,10 @@ extension ProgramAssociationTable : CustomStringConvertible {
     }
 }
 extension ProgramAssociationTable {
-    var hexDump: [UInt8] {
+    public var hexDump: [UInt8] {
         return programAssociationSection.payload
     }
-    var networkId: UInt16 {
+    public var networkId: UInt16 {
         guard let program = programs.first(where: { $0.programNumber == 0x00}) else {
             fatalError("Not Found networkId")
         }
@@ -54,17 +54,17 @@ extension ProgramAssociationTable {
     }
 }
 
-struct Program {
-    let programNumber: UInt16               // 16 uimsbf
-    //let _reserved1: UInt8                 //  3 bslbf
-    let PID: UInt16                         // 13 uimsbf
-    init(_ bytes: [UInt8]) {
+public struct Program {
+    public let programNumber: UInt16               // 16 uimsbf
+    //public let _reserved1: UInt8                 //  3 bslbf
+    public let PID: UInt16                         // 13 uimsbf
+    public init(_ bytes: [UInt8]) {
         self.programNumber = UInt16(bytes[0])<<8 | UInt16(bytes[1])
         self.PID = UInt16(bytes[2]&0x1F)<<8 | UInt16(bytes[3])
     }
 }
 extension Program : CustomStringConvertible {
-    var description: String {
+    public var description: String {
         return "{programNumber: \(String(format: "0x%04x", programNumber))"
             + ", PID: \(String(format: "0x%04x", PID))"
             + "}"

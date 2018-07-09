@@ -1,24 +1,23 @@
+// 
+//  CaptionDecoder.swift
+//  CaptionDecoder
 //
-//  main.swift
-//  swift-caption-decoder
-//
-//  Created by saga-dash on 2018/07/05.
+//  Created by saga-dash on 2018/07/10.
 //
 
 
 import Foundation
 
-let file = FileHandle.standardInput
-let LENGTH = 188
+
+public let LENGTH = 188
 let PES_PRIVATE_DATA = 0x06             // ARIB STD-B24 表 4-1 伝送方式の種類
 var targetPMTPID: UInt16 = 0xFFFF
 var targetCaptionPID: UInt16 = 0xFFFF
 var stock: Dictionary<UInt16, Data> = [:]
 
-while true {
-    let data = file.readData(ofLength: LENGTH)
+public func CaptionDecoderMain(data: Data) -> Caption? {
     if data.count != LENGTH {
-        break
+        return nil
     }
     let header = TransportPacket(data)
     // TODO Enumにする
@@ -35,13 +34,13 @@ while true {
             fatalError("Not Found Program in PAT")
         }
         targetPMTPID = program.PID
-        continue
+        return nil
     }
     // PMT?
     if header.PID == targetPMTPID {
         // はじめのunitではない&&前のデータがない
         if (header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil) {
-            continue
+            return nil
         }
         let newData: Data
         // 前のデータと結合
@@ -50,7 +49,7 @@ while true {
             if header.payloadUnitStartIndicator == 0x01 {
                 //stock.removeValue(forKey: header.PID)
                 stock[header.PID] = data
-                continue
+                return nil
             }
             newData = stock[header.PID]! + data.suffix(from: 4) // header 4byte
         } else {
@@ -59,7 +58,7 @@ while true {
         guard let pmt = ProgramMapTable(newData) else {
             // データが足りていなければ、ストックする
             stock[header.PID] = newData
-            continue
+            return nil
         }
         defer {
             stock.removeValue(forKey: header.PID)
@@ -70,7 +69,7 @@ while true {
         let streams = pmt.stream.filter({$0.streamType==PES_PRIVATE_DATA})
         if streams.count == 0 {
             print("字幕無いよ")
-            continue
+            return nil
         }
         //print("streams: \(streams)")
         // 字幕: 0x30, 0x87
@@ -78,16 +77,16 @@ while true {
         // ToDo: 定義探す
         guard let stream = streams.first(where:{nil != $0.descriptor.first(where:{$0.componentTag == 0x30})}) else {
             print("字幕無いよ2")
-            continue
+            return nil
         }
         targetCaptionPID = stream.elementaryPID
         //print("targetCaptionPID: \(String(format: "0x%04x", targetCaptionPID))")
-        continue
+        return nil
     }
     if header.PID == targetCaptionPID {
         // はじめのunitではない&&前のデータがない
         if header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil {
-            continue
+            return nil
         }
         let newData: Data
         // 前のデータと結合
@@ -98,7 +97,7 @@ while true {
         }
         guard let caption = Caption(newData) else {
             stock[header.PID] = newData
-            continue
+            return nil
         }
         defer {
             stock.removeValue(forKey: header.PID)
@@ -106,24 +105,11 @@ while true {
         // ARIB STD-B24 第一編 第 3 部 表 9-2 字幕データとデータグループ識別の対応
         // 字幕管理: 0x00 or 0x20
         if caption.dataGroupId == 0x00 || caption.dataGroupId == 0x20 {
-            continue
+            return nil
         }
         //printHexDumpForBytes(bytes: caption.payload)
         //print(caption)
-        for dataUnit in caption.dataUnit {
-            // ARIB STD-B24 第一編 第 3 部 表 9-12 データユニットの種類
-            // 本文: 0x20, 1バイト DRCS: 0x30, 2バイト DRCS: 0x31
-            switch dataUnit.dataUnitParameter {
-            case 0x20:
-                //printHexDumpForBytes(bytes: dataUnit.payload)
-                let result = ARIB8charDecode(dataUnit)
-                print(result.str)
-            case 0x30, 0x31:
-                print("DRCSじゃん!")
-            default:
-                print("dataUnit.dataUnitParameter: \(dataUnit.dataUnitParameter)")
-            }
-        }
-        continue
+        return caption
     }
+    return nil
 }

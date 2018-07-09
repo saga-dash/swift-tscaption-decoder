@@ -9,16 +9,16 @@
 import Foundation
 
 // PES http://www.nhk.or.jp/strl/publica/bt/en/le0011.pdf
-struct PacketizedElementaryStream {
-    let header: TransportPacket
-    let packetStartCodePrefix: UInt32       // 24 bit
-    let streamId: UInt8                     //  8 bit
-    let packetLength: UInt16                // 16 bit
-    // ToDo: 追加                            // 16 bit
-    let pesHeaderLength: UInt8              //  8 bit
+public struct PacketizedElementaryStream {
+    public let header: TransportPacket
+    public let packetStartCodePrefix: UInt32       // 24 bit
+    public let streamId: UInt8                     //  8 bit
+    public let packetLength: UInt16                // 16 bit
+    // ToDo: 追加                                   // 16 bit
+    public let pesHeaderLength: UInt8              //  8 bit
     // ToDo: 追加
-    let payload: [UInt8]                    //  n byte
-    init(_ data: Data) {
+    public let payload: [UInt8]                    //  n byte
+    public init(_ data: Data) {
         self.header = TransportPacket(data)
         var bytes = header.payload
         self.packetStartCodePrefix = UInt32(bytes[0])<<16 | UInt32(bytes[1])<<8 | UInt32(bytes[2])
@@ -29,7 +29,7 @@ struct PacketizedElementaryStream {
     }
 }
 extension PacketizedElementaryStream : CustomStringConvertible {
-    var description: String {
+    public var description: String {
         return "PacketizedElementaryStream(PID: \(String(format: "0x%04x", header.PID))"
             + ", streamId: \(String(format: "0x%02x", streamId))"
             + ", packetLength: \(String(format: "0x%04x", packetLength))"
@@ -38,7 +38,7 @@ extension PacketizedElementaryStream : CustomStringConvertible {
     }
 }
 extension PacketizedElementaryStream {
-    var hexDump: [UInt8] {
+    public var hexDump: [UInt8] {
         return header.payload
     }
 }

@@ -14,30 +14,30 @@ let UNUSED = 0xFF
 
 // ARIB STD-B24 第三編 第5章 独立 PES 伝送方式
 // ARIB STD-B24 第一編 第 3 部 第9章 字幕・文字スーパーの伝送 表 9-1 データグループ
-struct Caption {
-    let header: TransportPacket
-    let pesHeader: PacketizedElementaryStream
+public struct Caption {
+    public let header: TransportPacket
+    public let pesHeader: PacketizedElementaryStream
     // --- Synchronized_PES_data ---
-    let dataIdentifier: UInt8               //  8 uimsbf
-    let privateStreamId: UInt8              //  8 uimsbf
-    //let reservedFutureUse: UInt8          //  4 uimsbf
-    let pesDataPacketHeaderLength: UInt8    //  4 uimsbf
+    public let dataIdentifier: UInt8               //  8 uimsbf
+    public let privateStreamId: UInt8              //  8 uimsbf
+    //public let reservedFutureUse: UInt8          //  4 uimsbf
+    public let pesDataPacketHeaderLength: UInt8    //  4 uimsbf
     // --- caption_data ---
-    let dataGroupId: UInt8                  //  6 uimsbf DGI
-    let dataGroupVersion: UInt8             //  2 bslbf
-    let dataGroupLinkNumber: UInt8          //  8 uimsbf
-    let lastDataGroupLinkNumber: UInt8      //  8 uimsbf
-    let dataGroupSize: UInt16               // 16 uimsbf
-    let TMD: UInt8                          //  2 uimsbf
-    //let _reserved1: UInt8                 //  6 bslbf
-    let STM: UInt64?                        // 36 uimsbf TMDによる
-    //let _reserved1: UInt8?                //  4 bslbf  TMDによる
-    let dataUnitLoopLength: UInt32          // 24 uimsbf
-    let dataUnit: [DataUnit]                //  5 byte + 1*n byte
+    public let dataGroupId: UInt8                  //  6 uimsbf DGI
+    public let dataGroupVersion: UInt8             //  2 bslbf
+    public let dataGroupLinkNumber: UInt8          //  8 uimsbf
+    public let lastDataGroupLinkNumber: UInt8      //  8 uimsbf
+    public let dataGroupSize: UInt16               // 16 uimsbf
+    public let TMD: UInt8                          //  2 uimsbf
+    //public let _reserved1: UInt8                 //  6 bslbf
+    public let STM: UInt64?                        // 36 uimsbf TMDによる
+    //public let _reserved1: UInt8?                //  4 bslbf  TMDによる
+    public let dataUnitLoopLength: UInt32          // 24 uimsbf
+    public let dataUnit: [DataUnit]                //  5 byte + 1*n byte
     // --- Synchronized_PES_data ---
-    //let CRC_16: UInt16                    // 16 rpchof
-    let payload: [UInt8]                    //  n byte
-    init?(_ data: Data) {
+    //public let CRC_16: UInt16                    // 16 rpchof
+    public let payload: [UInt8]                    //  n byte
+    public init?(_ data: Data) {
         self.header = TransportPacket(data)
         var bytes = header.payload
         if !(bytes[0] == 0x00 && bytes[1] == 0x0 && bytes[2] == 0x01) {
@@ -100,7 +100,7 @@ struct Caption {
     }
 }
 extension Caption : CustomStringConvertible {
-    var description: String {
+    public var description: String {
         return "Caption(PID: \(String(format: "0x%04x", header.PID))"
             + ", dataGroupId: \(String(format: "0x%02x", dataGroupId))"
             + ", dataGroupSize: \(String(format: "0x%04x", dataGroupSize))"
@@ -115,12 +115,12 @@ extension Caption {
     }
 }
 // ARIB STD-B24 第一編 第 3 部 第9章 字幕・文字スーパーの伝送 表 9-11 データユニット
-struct DataUnit {
-    let unitSeparator: UInt8          //  8 uimsbf
-    let dataUnitParameter: UInt8      //  8 uimsbf
-    let dataUnitSize: UInt32          // 24 uimsbf
-    let payload: [UInt8]
-    init?(_ bytes: [UInt8]) {
+public struct DataUnit {
+    public let unitSeparator: UInt8          //  8 uimsbf
+    public let dataUnitParameter: UInt8      //  8 uimsbf
+    public let dataUnitSize: UInt32          // 24 uimsbf
+    public let payload: [UInt8]
+    public init?(_ bytes: [UInt8]) {
         // データユニット分離符号: 0x1F
         if bytes[0] != 0x1F {
             return nil
@@ -132,7 +132,7 @@ struct DataUnit {
     }
 }
 extension DataUnit : CustomStringConvertible {
-    var description: String {
+    public var description: String {
         return "DataUnit(unitSeparator: \(String(format: "0x%02x", unitSeparator))"
             + ", dataUnitParameter: \(String(format: "0x%02x", dataUnitParameter))"
             + ", dataUnitSize: \(String(format: "0x%04x", dataUnitSize))"
