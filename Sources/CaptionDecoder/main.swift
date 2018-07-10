@@ -17,6 +17,12 @@ if let filepath = env["TS_FILE_PATH"] {
     file = FileHandle.standardInput
 }
 
+#if os(Linux)
+func autoreleasepool(_ code: () -> ()) {
+    code()
+}
+#endif
+
 while true {
     autoreleasepool {
         let data = file.readData(ofLength: LENGTH)
@@ -26,6 +32,7 @@ while true {
         let result = CaptionDecoderMain(data: data)
         for unit in result {
             print(unit.str)
+            fflush(stdout)
         }
     }
 }
