@@ -18,12 +18,14 @@ if let filepath = env["TS_FILE_PATH"] {
 }
 
 while true {
-    let data = file.readData(ofLength: LENGTH)
-    if data.count != LENGTH {
-        break
-    }
-    let result = CaptionDecoderMain(data: data)
-    for unit in result {
-        print(unit.str)
+    autoreleasepool {
+        let data = file.readData(ofLength: LENGTH)
+        if data.count != LENGTH {
+            exit(-1)
+        }
+        let result = CaptionDecoderMain(data: data)
+        for unit in result {
+            print(unit.str)
+        }
     }
 }
