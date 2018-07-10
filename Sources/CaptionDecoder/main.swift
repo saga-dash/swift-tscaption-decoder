@@ -9,7 +9,13 @@
 import Foundation
 import CaptionDecoderLib
 
-let file = FileHandle.standardInput
+let env = ProcessInfo.processInfo.environment
+var file: FileHandle
+if let filepath = env["TS_FILE_PATH"] {
+    file = FileHandle.init(forReadingAtPath: filepath)!
+} else {
+    file = FileHandle.standardInput
+}
 
 while true {
     let data = file.readData(ofLength: LENGTH)
