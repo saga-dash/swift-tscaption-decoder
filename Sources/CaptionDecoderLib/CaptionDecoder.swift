@@ -15,9 +15,9 @@ var targetPMTPID: UInt16 = 0xFFFF
 var targetCaptionPID: UInt16 = 0xFFFF
 var stock: Dictionary<UInt16, Data> = [:]
 
-public func CaptionDecoderMain(data: Data) -> Caption? {
+public func CaptionDecoderMain(data: Data) -> [Unit] {
     if data.count != LENGTH {
-        return nil
+        return []
     }
     let header = TransportPacket(data)
     // TODO Enumにする
@@ -34,13 +34,13 @@ public func CaptionDecoderMain(data: Data) -> Caption? {
             fatalError("Not Found Program in PAT")
         }
         targetPMTPID = program.PID
-        return nil
+        return []
     }
     // PMT?
     if header.PID == targetPMTPID {
         // はじめのunitではない&&前のデータがない
         if (header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil) {
-            return nil
+            return []
         }
         let newData: Data
         // 前のデータと結合
@@ -49,7 +49,7 @@ public func CaptionDecoderMain(data: Data) -> Caption? {
             if header.payloadUnitStartIndicator == 0x01 {
                 //stock.removeValue(forKey: header.PID)
                 stock[header.PID] = data
-                return nil
+                return []
             }
             newData = stock[header.PID]! + data.suffix(from: 4) // header 4byte
         } else {
@@ -58,7 +58,7 @@ public func CaptionDecoderMain(data: Data) -> Caption? {
         guard let pmt = ProgramMapTable(newData) else {
             // データが足りていなければ、ストックする
             stock[header.PID] = newData
-            return nil
+            return []
         }
         defer {
             stock.removeValue(forKey: header.PID)
@@ -69,7 +69,7 @@ public func CaptionDecoderMain(data: Data) -> Caption? {
         let streams = pmt.stream.filter({$0.streamType==PES_PRIVATE_DATA})
         if streams.count == 0 {
             print("字幕無いよ")
-            return nil
+            return []
         }
         //print("streams: \(streams)")
         // 字幕: 0x30, 0x87
@@ -77,16 +77,16 @@ public func CaptionDecoderMain(data: Data) -> Caption? {
         // ToDo: 定義探す
         guard let stream = streams.first(where:{nil != $0.descriptor.first(where:{$0.componentTag == 0x30})}) else {
             print("字幕無いよ2")
-            return nil
+            return []
         }
         targetCaptionPID = stream.elementaryPID
         //print("targetCaptionPID: \(String(format: "0x%04x", targetCaptionPID))")
-        return nil
+        return []
     }
     if header.PID == targetCaptionPID {
         // はじめのunitではない&&前のデータがない
         if header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil {
-            return nil
+            return []
         }
         let newData: Data
         // 前のデータと結合
@@ -97,7 +97,7 @@ public func CaptionDecoderMain(data: Data) -> Caption? {
         }
         guard let caption = Caption(newData) else {
             stock[header.PID] = newData
-            return nil
+            return []
         }
         defer {
             stock.removeValue(forKey: header.PID)
@@ -105,11 +105,27 @@ public func CaptionDecoderMain(data: Data) -> Caption? {
         // ARIB STD-B24 第一編 第 3 部 表 9-2 字幕データとデータグループ識別の対応
         // 字幕管理: 0x00 or 0x20
         if caption.dataGroupId == 0x00 || caption.dataGroupId == 0x20 {
-            return nil
+            return []
         }
         //printHexDumpForBytes(bytes: caption.payload)
         //print(caption)
-        return caption
+        let result = caption.dataUnit.map({(dataUnit: DataUnit) -> Unit? in
+            // ARIB STD-B24 第一編 第 3 部 表 9-12 データユニットの種類
+            // 本文: 0x20, 1バイト DRCS: 0x30, 2バイト DRCS: 0x31
+            switch dataUnit.dataUnitParameter {
+            case 0x20:
+                //printHexDumpForBytes(bytes: dataUnit.payload)
+                let result = ARIB8charDecode(dataUnit)
+                return result
+            case 0x30, 0x31:
+                print("DRCSじゃん!")
+                return nil
+            default:
+                print("dataUnit.dataUnitParameter: \(dataUnit.dataUnitParameter)")
+                return nil
+            }
+        }).filter({$0 != nil}) as! [Unit]
+        return result
     }
-    return nil
+    return []
 }
