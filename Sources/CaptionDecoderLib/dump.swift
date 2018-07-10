@@ -15,7 +15,7 @@
 // different formats of hex-dump output.
 
 
-import Cocoa
+import Foundation
 
 
 /// Split a sequence into equal-size chunks and process each chunk.
@@ -124,7 +124,7 @@ public func hexDumpLineForOffset(
     let hex = hexStringForBytes(bytes: bytes)
     let paddedHex = String(format: "%-47s", NSString(string: hex).utf8String!)
     let printable = printableTextForBytes(bytes: bytes)
-    return String(format: "%08x  %@  %@", offset, paddedHex, printable)
+    return String(format: "%08x  \(paddedHex)  \(printable)", offset)
 }
 
 
@@ -173,17 +173,6 @@ public func hexDumpStringForBytes(
     var s = ""
     forEachHexDumpLineForBytes(bytes: bytes) { s += $0 + "\n" }
     return s
-}
-
-
-/// Dump a sequence of bytes to the log.
-///
-/// - parameter bytes: Sequence of `UInt8` values to be hex-dumped.
-
-public func logHexDumpForBytes(
-    bytes: [UInt8])
-{
-    forEachHexDumpLineForBytes(bytes: bytes) { NSLog("%@", $0) }
 }
 
 // Test printHexDumpForBytes:
