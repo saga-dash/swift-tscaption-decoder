@@ -18,8 +18,8 @@ public struct PacketizedElementaryStream {
     public let pesHeaderLength: UInt8              //  8 bit
     // ToDo: 追加
     public let payload: [UInt8]                    //  n byte
-    public init(_ data: Data) {
-        self.header = TransportPacket(data)
+    public init(_ data: Data, _ _header: TransportPacket? = nil) {
+        self.header = _header ?? TransportPacket(data)
         var bytes = header.payload
         self.packetStartCodePrefix = UInt32(bytes[0])<<16 | UInt32(bytes[1])<<8 | UInt32(bytes[2])
         self.streamId = bytes[3]

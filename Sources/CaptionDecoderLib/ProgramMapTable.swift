@@ -19,9 +19,9 @@ public struct ProgramMapTable {
     public let descriptor: [Descriptor]         // n byte
     public let stream: [Stream]                 // n byte
     public let CRC_32: UInt32                   // 32 uimsbf
-    public init?(_ data: Data) {
-        self.header = TransportPacket(data)
-        self.programAssociationSection = ProgramAssociationSection(data)
+    public init?(_ data: Data, _ _header: TransportPacket? = nil) {
+        self.header = _header ?? TransportPacket(data)
+        self.programAssociationSection = ProgramAssociationSection(data, header)
         var bytes = programAssociationSection.payload
         self.PCR_PID = UInt16(bytes[0]&0x1F)<<8 | UInt16(bytes[1])
         // -- Descriptor

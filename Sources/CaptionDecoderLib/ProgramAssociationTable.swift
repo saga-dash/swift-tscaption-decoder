@@ -14,9 +14,9 @@ public struct ProgramAssociationTable {
     public let programAssociationSection: ProgramAssociationSection
     public let programs: [Program]
     public let CRC_32: UInt32    // 32 uimsbf
-    public init(_ data: Data) {
-        self.header = TransportPacket(data)
-        self.programAssociationSection = ProgramAssociationSection(data)
+    public init(_ data: Data, _ _header: TransportPacket? = nil) {
+        self.header = _header ?? TransportPacket(data)
+        self.programAssociationSection = ProgramAssociationSection(data, header)
         var bytes = programAssociationSection.payload
         let payloadLength = programAssociationSection.sectionLength
             - 5 // PAT(sessionLength以下の固定分)

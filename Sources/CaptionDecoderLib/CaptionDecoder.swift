@@ -25,7 +25,7 @@ public func CaptionDecoderMain(data: Data) -> [Unit] {
     if header.PID == 0x00 {
         //printHexDumpForBytes(data)
         //print(header)
-        let pat = ProgramAssociationTable(data)
+        let pat = ProgramAssociationTable(data, header)
         //printHexDumpForBytes(bytes: pat.programAssociationSection.hexDump)
         //print(pat.programAssociationSection)
         //print(pat)
@@ -37,7 +37,7 @@ public func CaptionDecoderMain(data: Data) -> [Unit] {
         return []
     }
     // PMT?
-    if header.PID == targetPMTPID {
+    else if header.PID == targetPMTPID {
         // はじめのunitではない&&前のデータがない
         if (header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil) {
             return []
@@ -83,7 +83,7 @@ public func CaptionDecoderMain(data: Data) -> [Unit] {
         //print("targetCaptionPID: \(String(format: "0x%04x", targetCaptionPID))")
         return []
     }
-    if header.PID == targetCaptionPID {
+    else if header.PID == targetCaptionPID {
         // はじめのunitではない&&前のデータがない
         if header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil {
             return []

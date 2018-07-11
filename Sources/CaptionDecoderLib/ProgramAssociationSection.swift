@@ -22,8 +22,8 @@ public struct ProgramAssociationSection {
     public let sectionNumber: UInt8                //  8  uimsbf
     public let lastSectionNumber: UInt8            //  8  uimsbf
     public let payload: [UInt8]                    //  n  byte
-    public init(_ data: Data) {
-        self.header = TransportPacket(data)
+    public init(_ data: Data, _ _header: TransportPacket? = nil) {
+        self.header = _header ?? TransportPacket(data)
         let bytes = header.payload
         self.tableId = bytes[0]
         self.sectionSyntaxIndicator = (bytes[1]&0x80)>>7
