@@ -15,7 +15,7 @@ var targetPMTPID: UInt16 = 0xFFFF
 var targetCaptionPID: UInt16 = 0xFFFF
 var stock: Dictionary<UInt16, Data> = [:]
 
-public func CaptionDecoderMain(data: Data) -> [Unit] {
+public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
     if data.count != LENGTH {
         return []
     }
@@ -75,8 +75,8 @@ public func CaptionDecoderMain(data: Data) -> [Unit] {
         //print("streams: \(streams)")
         // 字幕: 0x30, 0x87
         // 文字スーパー: 0x38, 0x88
-        // ToDo: 定義探す
-        guard let stream = streams.first(where:{nil != $0.descriptor.first(where:{$0.componentTag == 0x30})}) else {
+        // ARIB TR-B14 第四編 第1部14 表 14-1 component_tag の割当て
+        guard let stream = streams.first(where:{nil != $0.descriptor.first(where:{$0.componentTag == options.componentType.rawValue})}) else {
             print("字幕無いよ2")
             return []
         }
@@ -141,4 +141,29 @@ public func CaptionDecoderMain(data: Data) -> [Unit] {
         return result
     }
     return []
+}
+
+public struct Options {
+    let componentType: ComponentType
+    public init(_ componentType: ComponentType) {
+        self.componentType = componentType
+    }
+}
+public enum ComponentType: UInt8 {
+    case subtitle   = 0x30
+    case subtitle1  = 0x31
+    case subtitle2  = 0x32
+    case subtitle3  = 0x33
+    case subtitle4  = 0x34
+    case subtitle5  = 0x35
+    case subtitle6  = 0x36
+    case subtitle7  = 0x37
+    case teletext   = 0x38
+    case teletext1  = 0x39
+    case teletext2  = 0x3A
+    case teletext3  = 0x3B
+    case teletext4  = 0x3C
+    case teletext5  = 0x3D
+    case teletext6  = 0x3E
+    case teletext7  = 0x3F
 }
