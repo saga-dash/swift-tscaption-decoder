@@ -456,6 +456,7 @@ func getChar(_ bytes: [UInt8], index: inout Int, mode: MFMode) -> String {
     }
 }
 func CSI(_ bytes: [UInt8], index: inout Int) -> Control {
+    let _index = index
     var param = 0
     var command = ""
     // CSIの最長10byte？
@@ -476,7 +477,7 @@ func CSI(_ bytes: [UInt8], index: inout Int) -> Control {
         break
     }
     index += param + 2 // param + 中間文字 + 終端文字
-    let control = Control(.CSI, command: command, payload: Array(bytes[0..<param]))
+    let control = Control(.CSI, command: command, payload: Array(bytes[_index..<index]))
     return control
 }
 public struct Unit {
@@ -497,7 +498,7 @@ extension Control : CustomStringConvertible {
     public var description: String {
         return "Control(command: \(command)"
             + ", code: \(code)"
-            + ", payload: \(payload)"
+            + ", payload: \(payload.map({String(format: "0x%02x", $0)}).joined(separator: ","))"
             + ")"
     }
 }
