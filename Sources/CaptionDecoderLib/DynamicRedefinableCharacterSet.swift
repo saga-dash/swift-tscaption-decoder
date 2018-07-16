@@ -15,16 +15,14 @@ public struct DRCS {
     let codes: [Code]
     init(_ bytes: [UInt8]) {
         self.numberOfCode = bytes[0]
-        var codeLength = bytes.count - 1 // 1byte(codes前まで)
-        var bytes = Array(bytes.suffix(bytes.count - 1))
+        var bytes = Array(bytes.suffix(bytes.count - 1)) // 1byte(codes前まで)
         var array: [Code] = []
-        repeat {
+        for _ in 0..<numberOfCode {
             let code = Code(bytes)
             array.append(code)
             let sub = code.length // 3byte + 可変長
             bytes = Array(bytes.suffix(bytes.count - sub))
-            codeLength -= numericCast(sub)
-        } while codeLength > 0
+        }
         self.codes = array
     }
 }
@@ -42,16 +40,14 @@ struct Code {
     init(_ bytes: [UInt8]) {
         self.characterCode = UInt16(bytes[0])<<8 | UInt16(bytes[1])
         self.numberOfFont = bytes[2]
-        var fontLength = bytes.count - 3 // 3byte(fonts前まで)
-        var bytes = Array(bytes.suffix(bytes.count - 3))
+        var bytes = Array(bytes.suffix(bytes.count - 3)) // 3byte(fonts前まで)
         var array: [Font] = []
-        repeat {
+        for _ in 0..<numberOfFont {
             let font = Font(bytes)
             array.append(font)
             let sub = font.length // 4 or 5 byte + 可変長
             bytes = Array(bytes.suffix(bytes.count - sub))
-            fontLength -= numericCast(sub)
-        } while fontLength > 0
+        }
         self.fonts = array
     }
 }
