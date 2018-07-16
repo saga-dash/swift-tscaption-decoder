@@ -35,7 +35,7 @@ public struct Caption {
     public let dataUnitLoopLength: UInt32          // 24 uimsbf
     public let dataUnit: [DataUnit]                //  5 byte + 1*n byte
     // --- Synchronized_PES_data ---
-    //public let CRC_16: UInt16                    // 16 rpchof
+    public let CRC_16: UInt16                    // 16 rpchof
     public let payload: [UInt8]                    //  n byte
     public init?(_ data: Data, _ _header: TransportPacket? = nil) {
         self.header = _header ?? TransportPacket(data)
@@ -56,13 +56,12 @@ public struct Caption {
         if bytes[1] != UNUSED {
             return nil
         }
-        let headerSize = bytes[2]&0x0F
         // 3 byte(headerSizeまで), 5 byte(文字の最小サイズ)
-        if bytes.count < headerSize+3+5 {
+        if bytes.count < pesDataPacketHeaderLength+3+5 {
             //print("header分のpayloadが足りない")
             return nil
         }
-        bytes = Array(bytes.suffix(bytes.count - numericCast(3+headerSize))) // 3 byte(headerSizeまで) + 可変長分
+        bytes = Array(bytes.suffix(bytes.count - numericCast(3+pesDataPacketHeaderLength))) // 3 byte(headerSizeまで) + 可変長分
         self.dataGroupId = bytes[0]>>2
         self.dataGroupVersion = bytes[0]&0x03
         self.dataGroupLinkNumber = bytes[1]
@@ -78,25 +77,39 @@ public struct Caption {
             self.STM = nil
         }
         self.dataUnitLoopLength = UInt32(bytes[offset+5])<<16 | UInt32(bytes[offset+6])<<8 | UInt32(bytes[offset+7])
-        if bytes.count < dataGroupSize + 5 { // 5 byte(DataUnit?) + 2 byte(CRC)
+        if bytes.count < dataGroupSize + 5 + 2 { // 5 byte(DataUnit?) + 2 byte(CRC)
             //print("payloadが足りない")
+            //print(bytes.count, dataGroupSize, pesHeader.packetLength)
             return nil
         }
         bytes = Array(bytes.suffix(bytes.count - numericCast(offset+9))) // 9 byte(Captionサイズ?)
-        bytes = Array(bytes.prefix(numericCast(dataGroupSize) - 4)) // 4 byte(dataGroupSizeからCaptionの終わりまで)
+        bytes = Array(bytes.prefix(numericCast(dataGroupSize) - 4 + 2)) // 4 byte(dataGroupSizeからCaptionの終わりまで), 2 byte(CRC)
         self.payload = bytes
         var payloadLength = bytes.count
         var array: [DataUnit] = []
         repeat {
             guard let dataUnit = DataUnit(bytes) else {
+                //ToDo:
+                if array.count != 0 {
+                    //print("データユニット分離符号がない")
+                    //printHexDumpForBytes(bytes: bytes)
+                }
                 break
             }
             array.append(dataUnit)
             let sub = 5+Int(dataUnit.dataUnitSize) // 5byte+可変長(DataUnit)
             bytes = Array(bytes.suffix(bytes.count - sub))
             payloadLength -= numericCast(sub)
-        } while payloadLength > 0
+        } while payloadLength > 2 // 2 byte(CRC)
         self.dataUnit = array
+        self.CRC_16 = UInt16(bytes[bytes.count-2])<<8 | UInt16(bytes[bytes.count-1])
+        let headerLength = 3 + pesDataPacketHeaderLength // 3 byte(headerSizeまで) + 可変長分
+        let crcBytes = Array(pesHeader.payload[numericCast(headerLength)..<pesHeader.payload.count-2]) // 2 byte(CRC)
+        let calcCRC16 = crc16(crcBytes)!
+        if CRC_16 != calcCRC16 {
+            //print("\(String(format: "0x%04x", CRC_16))", "\(String(format: "0x%04x", calcCRC16))")
+            return nil
+        }
     }
 }
 extension Caption : CustomStringConvertible {
@@ -106,6 +119,7 @@ extension Caption : CustomStringConvertible {
             + ", dataGroupSize: \(String(format: "0x%04x", dataGroupSize))"
             + ", dataUnitLoopLength: \(String(format: "0x%08x", dataUnitLoopLength))"
             + ", dataUnit: \(dataUnit)"
+            + ", CRC_16: \(String(format: "0x%04x", CRC_16))"
             + ")"
     }
 }

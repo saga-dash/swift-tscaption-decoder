@@ -49,9 +49,10 @@ public func CaptionDecoderMain(data: Data) -> [Unit] {
             if header.payloadUnitStartIndicator == 0x01 {
                 //stock.removeValue(forKey: header.PID)
                 stock[header.PID] = data
-                return []
+                newData = data
+            } else {
+                newData = stock[header.PID]! + data.suffix(from: 4) // header 4byte
             }
-            newData = stock[header.PID]! + data.suffix(from: 4) // header 4byte
         } else {
             newData = data
         }
@@ -88,13 +89,22 @@ public func CaptionDecoderMain(data: Data) -> [Unit] {
         if header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil {
             return []
         }
+        //print(header)
         let newData: Data
         // 前のデータと結合
         if (stock[header.PID] != nil) {
-            newData = stock[header.PID]! + header.payload
+            // ストックが存在し先頭TSならデータがおかしいので置き換える
+            if header.payloadUnitStartIndicator == 0x01 {
+                //stock.removeValue(forKey: header.PID)
+                stock[header.PID] = data
+                newData = data
+            } else {
+                newData = stock[header.PID]! + header.payload
+            }
         } else {
             newData = data
         }
+        //printHexDumpForBytes(newData)
         guard let caption = Caption(newData) else {
             stock[header.PID] = newData
             return []
@@ -118,7 +128,9 @@ public func CaptionDecoderMain(data: Data) -> [Unit] {
                 let result = ARIB8charDecode(dataUnit)
                 return result
             case 0x30, 0x31:
-                print("DRCSじゃん!")
+                //print(newData.map({String(format: "0x%02x", $0)}).joined(separator: ", "))
+                let drcs = DRCS(dataUnit.payload)
+                //print(drcs)
                 return nil
             default:
                 print("dataUnit.dataUnitParameter: \(dataUnit.dataUnitParameter)")

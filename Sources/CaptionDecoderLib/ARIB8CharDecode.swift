@@ -9,10 +9,10 @@
 import Foundation
 
 
-var G0 = MFMode(charSet: .GSet, charTable: .KANJI, byte: 2)
-var G1 = MFMode(charSet: .GSet, charTable: .ASCII, byte: 1)
-var G2 = MFMode(charSet: .GSet, charTable: .HIRA, byte: 1)
-var G3 = MFMode(charSet: .GSet, charTable: .MACRO, byte: 1)
+var G0 = MFMode(charSet: .GSet, charTable: CharTableGset.KANJI.rawValue, byte: 2)
+var G1 = MFMode(charSet: .GSet, charTable: CharTableGset.ASCII.rawValue, byte: 1)
+var G2 = MFMode(charSet: .GSet, charTable: CharTableGset.HIRA.rawValue, byte: 1)
+var G3 = MFMode(charSet: .DRCS, charTable: CharTableDRCS.MACRO.rawValue, byte: 1)
 var GL: UnsafeMutablePointer<MFMode> = UnsafeMutablePointer(&G0)
 var GR: UnsafeMutablePointer<MFMode> = UnsafeMutablePointer(&G2)
 
@@ -27,10 +27,10 @@ public func ARIB8charDecode(_ dataUnit: DataUnit) -> Unit {
     if dataUnit.dataUnitParameter != 0x20 {
         fatalError("本文じゃないやん！")
     }
-    G0 = MFMode(charSet: .GSet, charTable: .KANJI, byte: 2)
-    G1 = MFMode(charSet: .GSet, charTable: .ASCII, byte: 1)
-    G2 = MFMode(charSet: .GSet, charTable: .HIRA, byte: 1)
-    G3 = MFMode(charSet: .GSet, charTable: .MACRO, byte: 1)
+    G0 = MFMode(charSet: .GSet, charTable: CharTableGset.KANJI.rawValue, byte: 2)
+    G1 = MFMode(charSet: .GSet, charTable: CharTableGset.ASCII.rawValue, byte: 1)
+    G2 = MFMode(charSet: .GSet, charTable: CharTableGset.HIRA.rawValue, byte: 1)
+    G3 = MFMode(charSet: .DRCS, charTable: CharTableDRCS.MACRO.rawValue, byte: 1)
     GL = UnsafeMutablePointer(&G0)
     GR = UnsafeMutablePointer(&G2)
     return Analyze(dataUnit.payload)
@@ -112,40 +112,87 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
                 if param2 > 0x2F {
                     // param2はテーブル(Gセット)
                     // GセットをG0に割り当てる
-                    guard let table = CharTable(rawValue: param2) else {
+                    guard let table = CharTableGset(rawValue: param2) else {
                         fatalError("未定義のテーブル1: \(String(format: "%02x", param2))")
                     }
-                    let mode = MFMode(charSet: .GSet, charTable: table, byte: 2)
+                    let mode = MFMode(charSet: .GSet, charTable: table.rawValue, byte: 2)
                     setMode(src: mode, dist: &G0)
                     index += 2
                     continue
-                }  else if param2 == 0x29 {
+                } else if param2 == 0x28 {
+                    let param3 = bytes[index+2]
+                    if param3 == 0x20 {
+                        // DRCSをG0に割り当てる(2byte
+                        let param4 = bytes[index+3]
+                        guard let table = CharTableDRCS(rawValue: param4) else {
+                            fatalError("未定義のテーブル9: \(String(format: "%02x", param4))")
+                        }
+                        let mode = MFMode(charSet: .DRCS, charTable: table.rawValue, byte: 2)
+                        setMode(src: mode, dist: &G0)
+                        index += 4
+                        continue
+                    }
+                    fatalError("未定義のテーブル9: \(String(format: "%02x", param3))")
+                } else if param2 == 0x29 {
                     // GセットをG1に割り当てる
                     let param3 = bytes[index+2]
-                    guard let table = CharTable(rawValue: param3) else {
+                    if param3 == 0x20 {
+                        // DRCSをG1に割り当てる(2byte
+                        let param4 = bytes[index+3]
+                        guard let table = CharTableDRCS(rawValue: param4) else {
+                            fatalError("未定義のテーブル10: \(String(format: "%02x", param4))")
+                        }
+                        let mode = MFMode(charSet: .DRCS, charTable: table.rawValue, byte: 2)
+                        setMode(src: mode, dist: &G1)
+                        index += 4
+                        continue
+                    }
+                    guard let table = CharTableGset(rawValue: param3) else {
                         fatalError("未定義のテーブル2: \(String(format: "%02x", param3))")
                     }
-                    let mode = MFMode(charSet: .GSet, charTable: table, byte: 2)
+                    let mode = MFMode(charSet: .GSet, charTable: table.rawValue, byte: 2)
                     setMode(src: mode, dist: &G1)
                     index += 3
                     continue
                 } else if param2 == 0x2A {
                     // GセットをG2に割り当てる
                     let param3 = bytes[index+2]
-                    guard let table = CharTable(rawValue: param3) else {
+                    if param3 == 0x20 {
+                        // DRCSをG2に割り当てる(2byte
+                        let param4 = bytes[index+3]
+                        guard let table = CharTableDRCS(rawValue: param4) else {
+                            fatalError("未定義のテーブル11: \(String(format: "%02x", param4))")
+                        }
+                        let mode = MFMode(charSet: .DRCS, charTable: table.rawValue, byte: 2)
+                        setMode(src: mode, dist: &G2)
+                        index += 4
+                        continue
+                    }
+                    guard let table = CharTableGset(rawValue: param3) else {
                         fatalError("未定義のテーブル3: \(String(format: "%02x", param3))")
                     }
-                    let mode = MFMode(charSet: .GSet, charTable: table, byte: 2)
+                    let mode = MFMode(charSet: .GSet, charTable: table.rawValue, byte: 2)
                     setMode(src: mode, dist: &G2)
                     index += 3
                     continue
                 } else if param2 == 0x2B {
                     // GセットをG3に割り当てる
                     let param3 = bytes[index+2]
-                    guard let table = CharTable(rawValue: param3) else {
+                    if param3 == 0x20 {
+                        // DRCSをG3に割り当てる(2byte
+                        let param4 = bytes[index+3]
+                        guard let table = CharTableDRCS(rawValue: param4) else {
+                            fatalError("未定義のテーブル12: \(String(format: "%02x", param4))")
+                        }
+                        let mode = MFMode(charSet: .DRCS, charTable: table.rawValue, byte: 2)
+                        setMode(src: mode, dist: &G3)
+                        index += 4
+                        continue
+                    }
+                    guard let table = CharTableGset(rawValue: param3) else {
                         fatalError("未定義のテーブル4: \(String(format: "%02x", param3))")
                     }
-                    let mode = MFMode(charSet: .GSet, charTable: table, byte: 2)
+                    let mode = MFMode(charSet: .GSet, charTable: table.rawValue, byte: 2)
                     setMode(src: mode, dist: &G3)
                     index += 3
                     continue
@@ -153,88 +200,85 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
             } else if param == 0x28 {
                 // GセットをG0に割り当てる
                 let param2 = bytes[index+1]
-                guard let table = CharTable(rawValue: param2) else {
+                guard let table = CharTableGset(rawValue: param2) else {
+                    // DRCSをG0に割り当てる
                     if param2 == 0x20 {
-                        // ToDo: マクロのみ定義
                         let param3 = bytes[index+2]
-                        guard let table = CharTable(rawValue: param3) else {
+                        guard let table = CharTableDRCS(rawValue: param3) else {
                             fatalError("未定義のテーブル5: \(String(format: "%02x", param2))")
                         }
-                        // ToDo: byte==1 マクロ
-                        let mode = MFMode(charSet: .GSet, charTable: table, byte: 1)
+                        let mode = MFMode(charSet: .DRCS, charTable: table.rawValue, byte: 1)
                         setMode(src: mode, dist: &G3)
                         index += 3
                         continue
                     }
                     fatalError("未定義のテーブル5: \(String(format: "%02x", param2))")
                 }
-                let mode = MFMode(charSet: .GSet, charTable: table, byte: 1)
+                let mode = MFMode(charSet: .GSet, charTable: table.rawValue, byte: 1)
                 setMode(src: mode, dist: &G0)
                 index += 2
                 continue
             } else if param == 0x29 {
                 // GセットをG1に割り当てる
                 let param2 = bytes[index+1]
-                guard let table = CharTable(rawValue: param2) else {
+                guard let table = CharTableGset(rawValue: param2) else {
+                    // DRCSをG1に割り当てる
                     if param2 == 0x20 {
-                        // ToDo: マクロのみ定義
                         let param3 = bytes[index+2]
-                        guard let table = CharTable(rawValue: param3) else {
+                        guard let table = CharTableDRCS(rawValue: param3) else {
                             fatalError("未定義のテーブル6: \(String(format: "%02x", param2))")
                         }
-                        // ToDo: byte==1 マクロ
-                        let mode = MFMode(charSet: .GSet, charTable: table, byte: 1)
+                        let mode = MFMode(charSet: .DRCS, charTable: table.rawValue, byte: 1)
                         setMode(src: mode, dist: &G3)
                         index += 3
                         continue
                     }
                     fatalError("未定義のテーブル6: \(String(format: "%02x", param2))")
                 }
-                let mode = MFMode(charSet: .GSet, charTable: table, byte: 1)
+                let mode = MFMode(charSet: .GSet, charTable: table.rawValue, byte: 1)
                 setMode(src: mode, dist: &G1)
                 index += 2
                 continue
             } else if param == 0x2A {
                 // GセットをG2に割り当てる
                 let param2 = bytes[index+1]
-                guard let table = CharTable(rawValue: param2) else {
+                guard let table = CharTableGset(rawValue: param2) else {
+                    // DRCSをG2に割り当てる
                     if param2 == 0x20 {
                         // ToDo: マクロのみ定義
                         let param3 = bytes[index+2]
-                        guard let table = CharTable(rawValue: param3) else {
+                        guard let table = CharTableDRCS(rawValue: param3) else {
                             fatalError("未定義のテーブル7: \(String(format: "%02x", param2))")
                         }
-                        // ToDo: byte==1 マクロ
-                        let mode = MFMode(charSet: .GSet, charTable: table, byte: 1)
+                        let mode = MFMode(charSet: .DRCS, charTable: table.rawValue, byte: 1)
                         setMode(src: mode, dist: &G3)
                         index += 3
                         continue
                     }
                     fatalError("未定義のテーブル7: \(String(format: "%02x", param2))")
                 }
-                let mode = MFMode(charSet: .GSet, charTable: table, byte: 1)
+                let mode = MFMode(charSet: .GSet, charTable: table.rawValue, byte: 1)
                 setMode(src: mode, dist: &G2)
                 index += 2
                 continue
             } else if param == 0x2B {
                 // GセットをG3に割り当てる
                 let param2 = bytes[index+1]
-                guard let table = CharTable(rawValue: param2) else {
+                guard let table = CharTableGset(rawValue: param2) else {
+                    // DRCSをG3に割り当てる
                     if param2 == 0x20 {
-                        // ToDo: マクロのみ定義
                         let param3 = bytes[index+2]
-                        guard let table = CharTable(rawValue: param3) else {
+                        guard let table = CharTableDRCS(rawValue: param3) else {
                             fatalError("未定義のテーブル8: \(String(format: "%02x", param2))")
                         }
-                        // ToDo: byte==1 マクロ
-                        let mode = MFMode(charSet: .GSet, charTable: table, byte: 1)
+                        let mode = MFMode(charSet: .DRCS, charTable: table.rawValue, byte: 1)
                         setMode(src: mode, dist: &G3)
                         index += 3
                         continue
                     }
                     fatalError("未定義のテーブル8: \(String(format: "%02x", param2))")
                 }
-                let mode = MFMode(charSet: .GSet, charTable: table, byte: 1)
+                let mode = MFMode(charSet: .GSet, charTable: table.rawValue, byte: 1)
                 setMode(src: mode, dist: &G3)
                 index += 2
                 continue
@@ -356,34 +400,59 @@ func getChar(_ bytes: [UInt8], index: inout Int, GL: UnsafeMutablePointer<MFMode
 }
 func getChar(_ bytes: [UInt8], index: inout Int, mode: MFMode) -> String {
     //print("\(String(format: "%02x", bytes[index]))", mode)
-    switch mode.charTable {
-    case .ASCII, .PROP_ASCII:
-        let str = AsciiTable[Int(bytes[index]&0x7F-0x21)]
-        index += Int(mode.byte)
-        return str
-    case .HIRA, .PROP_HIRA:
-        let str = HiraTable[Int(bytes[index]&0x7F-0x21)]
-        index += Int(mode.byte)
-        return str
-    case .KANA, .JISX_KANA, .PROP_KANA:
-        let str = KanaTable[Int(bytes[index]&0x7F-0x21)]
-        index += Int(mode.byte)
-        return str
-    case .KANJI, .JIS_KANJI1, .JIS_KANJI2, .KIGOU:
-        let str = jisToUtf16(bytes[index]&0x7F, bytes[index+1]&0x7F)
-        index += Int(mode.byte)
-        return str
-    case .MOSAIC_A, .MOSAIC_B, .MOSAIC_C, .MOSAIC_D:
-        // ToDo
-        let str = "%%%%"
-        index += Int(mode.byte)
-        return str
-    case .MACRO:
-        _ = Analyze(DefaultMacro[Int(bytes[index]&0x0F)])
-        index += Int(mode.byte)
-        return ""
-    default:
-        fatalError("まだだよ。 \(mode)")
+    if mode.charSet == .GSet {
+        guard let charTable = CharTableGset(rawValue: mode.charTable) else {
+            fatalError("未定義のテーブル: \(String(format: "%02x", mode.charTable))")
+        }
+        switch charTable {
+        case .ASCII, .PROP_ASCII:
+            let str = AsciiTable[Int(bytes[index]&0x7F-0x21)]
+            index += Int(mode.byte)
+            return str
+        case .HIRA, .PROP_HIRA:
+            let str = HiraTable[Int(bytes[index]&0x7F-0x21)]
+            index += Int(mode.byte)
+            return str
+        case .KANA, .JISX_KANA, .PROP_KANA:
+            let str = KanaTable[Int(bytes[index]&0x7F-0x21)]
+            index += Int(mode.byte)
+            return str
+        case .KANJI, .JIS_KANJI1, .JIS_KANJI2, .KIGOU:
+            let str = jisToUtf16(bytes[index]&0x7F, bytes[index+1]&0x7F)
+            index += Int(mode.byte)
+            return str
+        case .MOSAIC_A, .MOSAIC_B, .MOSAIC_C, .MOSAIC_D:
+            // ToDo
+            let str = "%%%%"
+            index += Int(mode.byte)
+            return str
+        default:
+            fatalError("まだだよ。 \(mode)")
+        }
+    } else {
+        guard let charTable = CharTableDRCS(rawValue: mode.charTable) else {
+            fatalError("未定義のテーブル: \(String(format: "%02x", mode.charTable))")
+        }
+        switch charTable {
+        case .DRCS_0:
+            // 2byte DRCS
+            // ToDo
+            let str = "####"
+            index += Int(mode.byte)
+            return str
+        case .DRCS_1, .DRCS_2, .DRCS_3, .DRCS_4, .DRCS_5, .DRCS_6, .DRCS_7, .DRCS_8, .DRCS_9, .DRCS_10, .DRCS_11, .DRCS_12, .DRCS_13, .DRCS_14, .DRCS_15:
+            // 1byte DRCS
+            // ToDo
+            let str = "####"
+            index += Int(mode.byte)
+            return str
+        case .MACRO:
+            _ = Analyze(DefaultMacro[Int(bytes[index]&0x0F)])
+            index += Int(mode.byte)
+            return ""
+        default:
+            fatalError("まだだよ。 \(mode)")
+        }
     }
 }
 func CSI(_ bytes: [UInt8], index: inout Int) -> Control {
@@ -508,7 +577,7 @@ enum CSIChar: UInt8 {
 }
 struct MFMode {
     let charSet: CharSet
-    let charTable: CharTable
+    let charTable: UInt8 // CharTableGset or CharTableDRCS
     let byte: UInt8
 }
 extension MFMode : CustomStringConvertible {
@@ -523,7 +592,7 @@ enum CharSet {
     case GSet
     case DRCS
 }
-enum CharTable: UInt8 {
+enum CharTableGset: UInt8 {
     case JIS_KANJI1     = 0x39 //JIS互換漢字1面
     case JIS_KANJI2     = 0x3A //JIS互換漢字2面
     case KIGOU          = 0x3B //追加記号
@@ -538,6 +607,24 @@ enum CharTable: UInt8 {
     case PROP_ASCII     = 0x36 //プロポーショナル英数
     case PROP_HIRA      = 0x37 //プロポーショナル平仮名
     case PROP_KANA      = 0x38 //プロポーショナル片仮名
-    case JISX_KANA      = 0x49 //JIX X0201片仮名}
+    case JISX_KANA      = 0x49 //JIX X0201片仮名
+}
+enum CharTableDRCS: UInt8 {
+    case DRCS_0         = 0x40 //DRCS-0
+    case DRCS_1         = 0x41 //DRCS-1
+    case DRCS_2         = 0x42 //DRCS-2
+    case DRCS_3         = 0x43 //DRCS-3
+    case DRCS_4         = 0x44 //DRCS-4
+    case DRCS_5         = 0x45 //DRCS-5
+    case DRCS_6         = 0x46 //DRCS-6
+    case DRCS_7         = 0x47 //DRCS-7
+    case DRCS_8         = 0x48 //DRCS-8
+    case DRCS_9         = 0x49 //DRCS-9
+    case DRCS_10        = 0x4A //DRCS-10
+    case DRCS_11        = 0x4B //DRCS-11
+    case DRCS_12        = 0x4C //DRCS-12
+    case DRCS_13        = 0x4D //DRCS-13
+    case DRCS_14        = 0x4E //DRCS-14
+    case DRCS_15        = 0x4F //DRCS-15
     case MACRO          = 0x70 //マクロ
 }
