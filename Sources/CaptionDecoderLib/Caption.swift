@@ -43,7 +43,10 @@ public struct Caption {
         if !(bytes[0] == 0x00 && bytes[1] == 0x0 && bytes[2] == 0x01) {
             return nil
         }
-        self.pesHeader = PacketizedElementaryStream(data, header)
+        guard let pesHeader = PacketizedElementaryStream(data, header) else {
+            return nil
+        }
+        self.pesHeader = pesHeader
         bytes = pesHeader.payload
         self.dataIdentifier = bytes[0]
         self.privateStreamId = bytes[1]
