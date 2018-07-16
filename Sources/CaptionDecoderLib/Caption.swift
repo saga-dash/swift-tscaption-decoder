@@ -37,8 +37,8 @@ public struct Caption {
     // --- Synchronized_PES_data ---
     public let CRC_16: UInt16                    // 16 rpchof
     public let payload: [UInt8]                    //  n byte
-    public init?(_ data: Data, _ _header: TransportPacket? = nil) {
-        self.header = _header ?? TransportPacket(data)
+    public init?(_ data: Data) {
+        self.header = TransportPacket(data, isPes: true)
         var bytes = header.payload
         if !(bytes[0] == 0x00 && bytes[1] == 0x0 && bytes[2] == 0x01) {
             return nil

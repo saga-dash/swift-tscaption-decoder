@@ -19,7 +19,7 @@ public func CaptionDecoderMain(data: Data) -> [Unit] {
     if data.count != LENGTH {
         return []
     }
-    let header = TransportPacket(data)
+    var header = TransportPacket(data)
     // TODO Enumにする
     // PAT?
     if header.PID == 0x00 {
@@ -89,6 +89,7 @@ public func CaptionDecoderMain(data: Data) -> [Unit] {
         if header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil {
             return []
         }
+        header = TransportPacket(data, isPes: true)
         //print(header)
         let newData: Data
         // 前のデータと結合

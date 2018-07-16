@@ -19,7 +19,7 @@ public struct TransportPacket {
     public let continuityCounter: UInt8             //  4  uimsbf
     public let adaptationField: AdaptationField?    //  n  byte
     public let payload: [UInt8]                     //  n  byte
-    public init(_ data: Data) {
+    public init(_ data: Data, isPes: Bool = false) {
         let bytes = [UInt8](data)
         self.syncByte = bytes[0]
         self.transportErrorIndicator = (bytes[1]&0x80)>>7
@@ -30,10 +30,9 @@ public struct TransportPacket {
         self.adaptationFieldControl = (bytes[3]&0x30)>>4
         self.continuityCounter = (bytes[3]&0x0F)
         self.adaptationField = (adaptationFieldControl&0x02)>>1 == 1 ? AdaptationField(data) : nil
-        let isPes = bytes[4] == 0x00 && bytes[5] == 0x00 && bytes[6] == 0x01
         let headerLength = 4 // Header
             + (adaptationField?.adaptationFieldLength ?? 0) // AdaptationFieldLength
-            + (isPes ? 0 : 1) // pointer_field
+            + (adaptationField==nil && isPes ? 0 : 1) // pointer_field
         self.payload = Array(bytes.suffix(bytes.count - Int(headerLength))) // HeaderLength + Payload = 188
     }
 }
