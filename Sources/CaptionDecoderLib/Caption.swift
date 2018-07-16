@@ -49,7 +49,7 @@ public struct Caption {
         self.privateStreamId = bytes[1]
         self.pesDataPacketHeaderLength = bytes[2]&0x0F
         // 同期型 PES: 0x80, 非同期型 PES パケット: 0x81
-        if bytes[0] != SYNCHRONIZED_PES && bytes[1] != ASYNCHRONOUS_PES {
+        if bytes[0] != SYNCHRONIZED_PES && bytes[0] != ASYNCHRONOUS_PES {
             print("字幕か文字スーパーである")
             return nil
         }
