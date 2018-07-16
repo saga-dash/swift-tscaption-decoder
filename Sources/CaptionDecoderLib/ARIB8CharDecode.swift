@@ -208,7 +208,7 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
                             fatalError("未定義のテーブル5: \(String(format: "%02x", param2))")
                         }
                         let mode = MFMode(charSet: .DRCS, charTable: table.rawValue, byte: 1)
-                        setMode(src: mode, dist: &G3)
+                        setMode(src: mode, dist: &G0)
                         index += 3
                         continue
                     }
@@ -229,7 +229,7 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
                             fatalError("未定義のテーブル6: \(String(format: "%02x", param2))")
                         }
                         let mode = MFMode(charSet: .DRCS, charTable: table.rawValue, byte: 1)
-                        setMode(src: mode, dist: &G3)
+                        setMode(src: mode, dist: &G1)
                         index += 3
                         continue
                     }
@@ -251,7 +251,7 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
                             fatalError("未定義のテーブル7: \(String(format: "%02x", param2))")
                         }
                         let mode = MFMode(charSet: .DRCS, charTable: table.rawValue, byte: 1)
-                        setMode(src: mode, dist: &G3)
+                        setMode(src: mode, dist: &G2)
                         index += 3
                         continue
                     }
