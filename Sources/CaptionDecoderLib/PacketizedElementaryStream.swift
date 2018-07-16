@@ -27,11 +27,14 @@ public struct PacketizedElementaryStream {
         if packetLength > bytes.count - 6 { // 6 byte(packetLengthまで)
             return nil
         }
-        // ToDo: 定義調べる
+        // ARIB STD-B24 第三編 第5章 独立 PES 伝送方式
+        // ToDo: private_stream_1, private_stream_2についてheaderの言及を探す
         if streamId == 0xBD {
+            // private_stream_1
             let pesHeaderLength = bytes[8]
             self.payload = Array(bytes.suffix(bytes.count - Int(9+pesHeaderLength))) // 9(pesHeaderLengthまで) + n byte(可変長)
         } else if streamId == 0xBF {
+            // private_stream_2
             self.payload = Array(bytes.suffix(bytes.count - Int(6))) // 6(packetLengthまで)
         } else {
             self.payload = []

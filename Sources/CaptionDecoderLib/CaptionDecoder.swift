@@ -10,7 +10,7 @@ import Foundation
 
 
 public let LENGTH = 188
-let PES_PRIVATE_DATA = 0x06             // ARIB STD-B24 表 4-1 伝送方式の種類
+let PES_PRIVATE_DATA = 0x06             // ARIB STD-B24 第三編 表 4-1 伝送方式の種類
 var targetPMTPID: UInt16 = 0xFFFF
 var targetCaptionPID: UInt16 = 0xFFFF
 var stock: Dictionary<UInt16, Data> = [:]
@@ -66,7 +66,6 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         }
         //printHexDumpForBytes(newData)
         //print(pmt)
-        // ToDo: PES_PRIVATE_DATAの定義探す
         let streams = pmt.stream.filter({$0.streamType==PES_PRIVATE_DATA})
         if streams.count == 0 {
             print("字幕無いよ")
