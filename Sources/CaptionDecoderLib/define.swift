@@ -8,7 +8,7 @@
 
 import Foundation
 
-public enum ControlCode: UInt8 {
+public enum ControlCode: UInt8, Codable {
     case NULL   = 0x00
     case BEL    = 0x07
     case APB    = 0x08

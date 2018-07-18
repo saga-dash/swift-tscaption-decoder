@@ -8,7 +8,7 @@
 
 import Foundation
 
-public struct Unit {
+public struct Unit: Codable {
     public let str: String
     public var eventId: UInt16
     public var serviceId: String
@@ -20,7 +20,7 @@ public struct Unit {
         self.control = control
     }
 }
-public struct Control {
+public struct Control: Codable {
     public let command: String
     public let code: ControlCode
     public let payload: [UInt8]

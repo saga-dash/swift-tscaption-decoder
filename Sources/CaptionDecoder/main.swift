@@ -79,7 +79,11 @@ let main = command(
             let options = Options(componentType)
             let result = CaptionDecoderMain(data: data, options: options)
             for unit in result {
-                print(unit.str)
+                //print(unit.str)
+                let encoder = JSONEncoder()
+                let encoded = try! encoder.encode(unit)
+                print(String(data: encoded, encoding: .utf8)!)
+
                 fflush(stdout)
             }
         }
