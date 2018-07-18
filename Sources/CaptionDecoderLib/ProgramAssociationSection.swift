@@ -15,7 +15,7 @@ public struct ProgramAssociationSection {
     //'0'                                          //  1  bslbf
     //public let _reserved1: UInt8                 //  2  bslbf
     public let sectionLength: UInt16               // 12  uimsbf
-    public let transportStreamId: UInt16           // 16  uimsbf
+    public let serviceId: UInt16                   // 16  uimsbf
     //public let _reserved2: UInt8                 //  2  bslbf
     public let versionNumber: UInt8                //  5  uimsbf
     public let currentNextIndicator: UInt8         //  1  bslbf
@@ -28,7 +28,7 @@ public struct ProgramAssociationSection {
         self.tableId = bytes[0]
         self.sectionSyntaxIndicator = (bytes[1]&0x80)>>7
         self.sectionLength = UInt16(bytes[1]&0x0F)<<8 | UInt16(bytes[2])
-        self.transportStreamId = UInt16(bytes[3])<<8 | UInt16(bytes[4])
+        self.serviceId = UInt16(bytes[3])<<8 | UInt16(bytes[4])
         self.versionNumber = (bytes[5]&0x3E)>>1
         self.currentNextIndicator = (bytes[5]&0x01)
         self.sectionNumber = (bytes[6])
@@ -41,7 +41,7 @@ extension ProgramAssociationSection : CustomStringConvertible {
         return "ProgramAssociationSection(tableId: \(String(format: "0x%02x", tableId))"
             + ", sectionSyntaxIndicator: \(sectionSyntaxIndicator)"
             + ", sectionLength: \(String(format: "0x%04x", sectionLength))"
-            + ", transportStreamId: \(String(format: "0x%04x", transportStreamId))"
+            + ", serviceId: \(String(format: "0x%04x", serviceId))"
             + ", versionNumber: \(String(format: "0x%02x", versionNumber))"
             + ", currentNextIndicator: \(currentNextIndicator)"
             + ", sectionNumber: \(String(format: "0x%02x", sectionNumber))"
