@@ -138,6 +138,41 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
             }
         }).filter({$0 != nil}) as! [Unit]
         return result
+    } else if header.PID == 0x0012 {// || header.PID == 0x0026 || header.PID == 0x0027 {
+        // EIT
+        // 固定用: 0x0012, ワンセグ受信用: 0x0027
+        // はじめのunitではない&&前のデータがない
+        if (header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil) {
+            return []
+        }
+        let newData: Data
+        // 前のデータと結合
+        if (stock[header.PID] != nil) {
+            // ストックが存在し先頭TSならデータがおかしいので置き換える
+            if header.payloadUnitStartIndicator == 0x01 {
+                //stock.removeValue(forKey: header.PID)
+                stock[header.PID] = data
+                newData = data
+            } else {
+                newData = stock[header.PID]! + data.suffix(from: 4) // header 4byte
+            }
+        } else {
+            newData = data
+        }
+        guard let eit = EventInformationTable(newData) else {
+            // データが足りていなければ、ストックする
+            stock[header.PID] = newData
+            return []
+        }
+        defer {
+            stock.removeValue(forKey: header.PID)
+        }
+        if eit.tableId != 0x004E {
+            return []
+        }
+        print(eit.header)
+        print(eit)
+        printHexDumpForBytes(newData)
     }
     return []
 }
