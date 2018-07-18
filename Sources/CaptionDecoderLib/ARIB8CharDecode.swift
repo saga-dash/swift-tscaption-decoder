@@ -184,6 +184,8 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
             index += 2
         case .CHAR:
             fatalError("command: \(code), code: \(String(format: "0x%02x", byte)), 出力用なので不正")
+        case .DRCS:
+            fatalError("command: \(code), code: \(String(format: "0x%02x", byte)), 出力用なので不正")
         default:
             fatalError("command: \(code), code: \(String(format: "0x%02x", byte)), まだ定義してないよ!")
         }
