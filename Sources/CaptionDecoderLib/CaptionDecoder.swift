@@ -15,6 +15,7 @@ var targetPMTPID: UInt16 = 0xFFFF
 var targetCaptionPID: UInt16 = 0xFFFF
 var stock: Dictionary<UInt16, Data> = [:]
 var presentEventId: UInt16 = 0xFFFF
+var presentServiceId: String = ""
 
 public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
     if data.count != LENGTH {
@@ -128,6 +129,7 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
                 //printHexDumpForBytes(bytes: dataUnit.payload)
                 var result = ARIB8charDecode(dataUnit)
                 result.eventId = presentEventId
+                result.serviceId = presentServiceId
                 return result
             case 0x30, 0x31:
                 //print(newData.map({String(format: "0x%02x", $0)}).joined(separator: ", "))
@@ -140,9 +142,10 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
                         controls.append(control)
                     }
                 }
-                var unit = Unit.init(str: "", control: controls)
-                unit.eventId = presentEventId
-                return unit
+                var result = Unit(str: "", control: controls)
+                result.eventId = presentEventId
+                result.serviceId = presentServiceId
+                return result
             default:
                 print("dataUnit.dataUnitParameter: \(dataUnit.dataUnitParameter)")
                 return nil
@@ -188,6 +191,7 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         //print(eit.header)
         //print(eit)
         presentEventId = event.eventId
+        presentServiceId = eit.serviceName
     }
     return []
 }

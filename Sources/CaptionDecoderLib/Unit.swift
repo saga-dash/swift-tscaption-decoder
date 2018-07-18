@@ -11,10 +11,12 @@ import Foundation
 public struct Unit {
     public let str: String
     public var eventId: UInt16
+    public var serviceId: String
     public let control: [Control]
-    public init(str: String, control: [Control]) {
+    public init(str: String, control: [Control], eventId: UInt16 = 0xFFFF, serviceId: String = "") {
         self.str = str
-        self.eventId = 0xFFFF
+        self.eventId = eventId
+        self.serviceId = serviceId
         self.control = control
     }
 }
