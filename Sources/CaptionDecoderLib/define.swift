@@ -55,6 +55,8 @@ public enum ControlCode: UInt8 {
     case TIME   = 0x9D
     //    case 10/0   = 0xA0
     //    case 15/15  = 0xFF
+    // 出力用に文字を定義
+    case CHAR   = 0x10
 }
 enum CSIChar: UInt8 {
     case SWF    = 0x53

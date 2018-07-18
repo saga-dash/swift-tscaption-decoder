@@ -46,7 +46,9 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
             if byte <= 0x20 || (0x7F<byte && byte<=0xA0) {
                 fatalError("未定義の制御コード: \(String(format: "%02x", byte))")
             }
-            str += getChar(bytes, index: &index, GL: GL, GR: GR)
+            let control = getChar(bytes, index: &index, GL: GL, GR: GR)
+            controls.append(control)
+            str += control.command
             continue
         }
         index += 1 // 制御コード分
@@ -68,8 +70,10 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
         case .APR:
             controls.append(Control(code))
         case .LS1:
+            controls.append(Control(code))
             GL = UnsafeMutablePointer<MFMode>(&G1)
         case .LS0:
+            controls.append(Control(code))
             GL = UnsafeMutablePointer<MFMode>(&G0)
         case .PAPF:
             controls.append(Control(code, payload: [bytes[index]]))
@@ -77,14 +81,19 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
         case .CAN:
             controls.append(Control(code))
         case .SS2:
-            str += getChar(bytes, index: &index, mode: G2)
+            let control = getChar(bytes, index: &index, mode: G2, code: .SS2)
+            controls.append(control)
+            str += control.command
         case .ESC:
-            ESC(bytes, index: &index)
+            let control = ESC(bytes, index: &index)
+            controls.append(control)
         case .APS:
             controls.append(Control(code, payload: [bytes[index], bytes[index+1]]))
             index += 2
         case .SS3:
-            str += getChar(bytes, index: &index, mode: G3)
+            let control = getChar(bytes, index: &index, mode: G3, code: .SS3)
+            controls.append(control)
+            str += control.command
         case .RS:
             controls.append(Control(code))
         case .US:
@@ -173,6 +182,8 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
             assert(param1 == 0x28, "時刻制御モードのパラメータ1がおかしい: \(String(format: "0x%02x", param1))")
             controls.append(Control(code, payload: [param1, bytes[index+1]]))
             index += 2
+        case .CHAR:
+            fatalError("command: \(code), code: \(String(format: "0x%02x", byte)), 出力用なので不正")
         default:
             fatalError("command: \(code), code: \(String(format: "0x%02x", byte)), まだ定義してないよ!")
         }
@@ -182,19 +193,19 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
 func setMode(src: MFMode, dist: inout MFMode) {
     dist = src
 }
-func getChar(_ bytes: [UInt8], index: inout Int, GL: UnsafeMutablePointer<MFMode>, GR: UnsafeMutablePointer<MFMode>) -> String {
+func getChar(_ bytes: [UInt8], index: inout Int, GL: UnsafeMutablePointer<MFMode>, GR: UnsafeMutablePointer<MFMode>) -> Control {
     let c = bytes[index]
     if c < 0x7F {
         // GL符号領域
-        let str = getChar(bytes, index: &index, mode: GL.pointee)
-        return str
+        let control = getChar(bytes, index: &index, mode: GL.pointee)
+        return control
     } else {
         // GR符号領域
-        let str = getChar(bytes, index: &index, mode: GR.pointee)
-        return str
+        let control = getChar(bytes, index: &index, mode: GR.pointee)
+        return control
     }
 }
-func getChar(_ bytes: [UInt8], index: inout Int, mode: MFMode) -> String {
+func getChar(_ bytes: [UInt8], index: inout Int, mode: MFMode, code: ControlCode = .CHAR) -> Control {
     //print("\(String(format: "%02x", bytes[index]))", mode)
     if mode.charSet == .GSet {
         guard let charTable = CharTableGset(rawValue: mode.charTable) else {
@@ -203,25 +214,30 @@ func getChar(_ bytes: [UInt8], index: inout Int, mode: MFMode) -> String {
         switch charTable {
         case .ASCII, .PROP_ASCII:
             let str = AsciiTable[Int(bytes[index]&0x7F-0x21)]
+            let control = Control(code, command: str, payload: [bytes[index]])
             index += Int(mode.byte)
-            return str
+            return control
         case .HIRA, .PROP_HIRA:
             let str = HiraTable[Int(bytes[index]&0x7F-0x21)]
+            let control = Control(code, command: str, payload: [bytes[index]])
             index += Int(mode.byte)
-            return str
+            return control
         case .KANA, .JISX_KANA, .PROP_KANA:
             let str = KanaTable[Int(bytes[index]&0x7F-0x21)]
+            let control = Control(code, command: str, payload: [bytes[index]])
             index += Int(mode.byte)
-            return str
+            return control
         case .KANJI, .JIS_KANJI1, .JIS_KANJI2, .KIGOU:
             let str = jisToUtf16(bytes[index]&0x7F, bytes[index+1]&0x7F)
+            let control = Control(code, command: str, payload: [bytes[index], bytes[index+1]])
             index += Int(mode.byte)
-            return str
+            return control
         case .MOSAIC_A, .MOSAIC_B, .MOSAIC_C, .MOSAIC_D:
             // ToDo
             let str = "%%%%"
+            let control = Control(code, command: str, payload: [bytes[index]])
             index += Int(mode.byte)
-            return str
+            return control
         default:
             fatalError("まだだよ。 \(mode)")
         }
@@ -234,50 +250,53 @@ func getChar(_ bytes: [UInt8], index: inout Int, mode: MFMode) -> String {
             // 2byte DRCS
             // ToDo
             let str = "####"
+            let control = Control(code, command: str, payload: [bytes[index], bytes[index+1]])
             index += Int(mode.byte)
-            return str
+            return control
         case .DRCS_1, .DRCS_2, .DRCS_3, .DRCS_4, .DRCS_5, .DRCS_6, .DRCS_7, .DRCS_8, .DRCS_9, .DRCS_10, .DRCS_11, .DRCS_12, .DRCS_13, .DRCS_14, .DRCS_15:
             // 1byte DRCS
             // ToDo
             let str = "####"
+            let control = Control(code, command: str, payload: [bytes[index]])
             index += Int(mode.byte)
-            return str
+            return control
         case .MACRO:
             _ = Analyze(DefaultMacro[Int(bytes[index]&0x0F)])
+            let control = Control(code, command: "", payload: [bytes[index]])
             index += Int(mode.byte)
-            return ""
+            return control
         default:
             fatalError("まだだよ。 \(mode)")
         }
     }
 }
-func ESC(_ bytes: [UInt8], index: inout Int) -> Void {
+func ESC(_ bytes: [UInt8], index: inout Int) -> Control {
     let param = bytes[index]
     if param == 0x6E {
         // G2をGLに割り当てる
         GL = UnsafeMutablePointer<MFMode>(&G2)
         index += 1
-        return
+        return Control(.ESC, payload: [param])
     } else if param == 0x6F {
         // G3をGLに割り当てる
         GL = UnsafeMutablePointer<MFMode>(&G3)
         index += 1
-        return
+        return Control(.ESC, payload: [param])
     } else if param == 0x7E {
         // G1をGRに割り当てる
         GR = UnsafeMutablePointer<MFMode>(&G1)
         index += 1
-        return
+        return Control(.ESC, payload: [param])
     } else if param == 0x7D {
         // G2をGRに割り当てる
         GR = UnsafeMutablePointer<MFMode>(&G2)
         index += 1
-        return
+        return Control(.ESC, payload: [param])
     } else if param == 0x7C {
         // G3をGRに割り当てる
         GR = UnsafeMutablePointer<MFMode>(&G3)
         index += 1
-        return
+        return Control(.ESC, payload: [param])
     }
     if bytes[index] == 0x24 && bytes[index+1] > 0x2F {
         // GセットをG0に割り当てる(2byte
@@ -287,7 +306,7 @@ func ESC(_ bytes: [UInt8], index: inout Int) -> Void {
         }
         setMode(src: mode, dist: &G0)
         index += 2
-        return
+        return Control(.ESC, payload: [param, param2])
     } else if bytes[index] == 0x24 && bytes[index+1] == 0x28 && bytes[index+2] == 0x20 {
         // DRCSをG0に割り当てる(2byte
         let param4 = bytes[index+3]
@@ -296,7 +315,7 @@ func ESC(_ bytes: [UInt8], index: inout Int) -> Void {
         }
         setMode(src: mode, dist: &G0)
         index += 4
-        return
+        return Control(.ESC, payload: [param, 0x28, 0x20, param4])
     } else if bytes[index] == 0x24 && bytes[index+1] == 0x29 && bytes[index+2] == 0x20 {
         // DRCSをG1に割り当てる(2byte
         let param4 = bytes[index+3]
@@ -305,7 +324,7 @@ func ESC(_ bytes: [UInt8], index: inout Int) -> Void {
         }
         setMode(src: mode, dist: &G1)
         index += 4
-        return
+        return Control(.ESC, payload: [param, 0x29, 0x20, param4])
     } else if bytes[index] == 0x24 && bytes[index+1] == 0x29 {
         // GセットをG1に割り当てる(2byte
         let param3 = bytes[index+2]
@@ -314,7 +333,7 @@ func ESC(_ bytes: [UInt8], index: inout Int) -> Void {
         }
         setMode(src: mode, dist: &G1)
         index += 3
-        return
+        return Control(.ESC, payload: [param, 0x28, param3])
     } else if bytes[index] == 0x24 && bytes[index+1] == 0x2A && bytes[index+2] == 0x20 {
         // DRCSをG2に割り当てる(2byte
         let param4 = bytes[index+3]
@@ -323,7 +342,7 @@ func ESC(_ bytes: [UInt8], index: inout Int) -> Void {
         }
         setMode(src: mode, dist: &G2)
         index += 4
-        return
+        return Control(.ESC, payload: [param, 0x2A, 0x20, param4])
     } else if bytes[index] == 0x24 && bytes[index+1] == 0x2A {
         // GセットをG2に割り当てる(2byte
         let param3 = bytes[index+2]
@@ -332,7 +351,7 @@ func ESC(_ bytes: [UInt8], index: inout Int) -> Void {
         }
         setMode(src: mode, dist: &G2)
         index += 3
-        return
+        return Control(.ESC, payload: [param, 0x2A, param3])
     } else if bytes[index] == 0x24 && bytes[index+1] == 0x2B && bytes[index+2] == 0x20 {
         // DRCSをG3に割り当てる(2byte
         let param4 = bytes[index+3]
@@ -341,7 +360,7 @@ func ESC(_ bytes: [UInt8], index: inout Int) -> Void {
         }
         setMode(src: mode, dist: &G3)
         index += 4
-        return
+        return Control(.ESC, payload: [param, 0x2B, 0x20, param4])
     } else if bytes[index] == 0x24 && bytes[index+1] == 0x2B {
         // GセットをG3に割り当てる(2byte
         let param3 = bytes[index+2]
@@ -350,7 +369,7 @@ func ESC(_ bytes: [UInt8], index: inout Int) -> Void {
         }
         setMode(src: mode, dist: &G3)
         index += 3
-        return
+        return Control(.ESC, payload: [param, 0x2B, param3])
     } else if bytes[index] == 0x28 && bytes[index+1] == 0x20 {
         // DRCSをG0に割り当てる
         let param3 = bytes[index+2]
@@ -359,7 +378,7 @@ func ESC(_ bytes: [UInt8], index: inout Int) -> Void {
         }
         setMode(src: mode, dist: &G0)
         index += 3
-        return
+        return Control(.ESC, payload: [param, 0x20, param3])
     } else if bytes[index] == 0x28 {
         // GセットをG0に割り当てる
         let param2 = bytes[index+1]
@@ -368,7 +387,7 @@ func ESC(_ bytes: [UInt8], index: inout Int) -> Void {
         }
         setMode(src: mode, dist: &G0)
         index += 2
-        return
+        return Control(.ESC, payload: [param, param2])
     } else if bytes[index] == 0x29 && bytes[index+1] == 0x20 {
         // DRCSをG1に割り当てる
         let param3 = bytes[index+2]
@@ -377,7 +396,7 @@ func ESC(_ bytes: [UInt8], index: inout Int) -> Void {
         }
         setMode(src: mode, dist: &G1)
         index += 3
-        return
+        return Control(.ESC, payload: [param, 0x20, param3])
     } else if bytes[index] == 0x29 {
         // GセットをG1に割り当てる
         let param2 = bytes[index+1]
@@ -386,7 +405,7 @@ func ESC(_ bytes: [UInt8], index: inout Int) -> Void {
         }
         setMode(src: mode, dist: &G1)
         index += 2
-        return
+        return Control(.ESC, payload: [param, param2])
     } else if bytes[index] == 0x2A && bytes[index+1] == 0x20 {
         // DRCSをG2に割り当てる
         let param3 = bytes[index+2]
@@ -395,7 +414,7 @@ func ESC(_ bytes: [UInt8], index: inout Int) -> Void {
         }
         setMode(src: mode, dist: &G2)
         index += 3
-        return
+        return Control(.ESC, payload: [param, 0x20, param3])
     } else if bytes[index] == 0x2A {
         // GセットをG2に割り当てる
         let param2 = bytes[index+1]
@@ -404,7 +423,7 @@ func ESC(_ bytes: [UInt8], index: inout Int) -> Void {
         }
         setMode(src: mode, dist: &G2)
         index += 2
-        return
+        return Control(.ESC, payload: [param, param2])
     } else if bytes[index] == 0x2B && bytes[index+1] == 0x20 {
         // DRCSをG3に割り当てる
         let param3 = bytes[index+2]
@@ -413,7 +432,7 @@ func ESC(_ bytes: [UInt8], index: inout Int) -> Void {
         }
         setMode(src: mode, dist: &G3)
         index += 3
-        return
+        return Control(.ESC, payload: [param, 0x20, param3])
     } else if bytes[index] == 0x2B {
         // GセットをG3に割り当てる
         let param2 = bytes[index+1]
@@ -422,7 +441,7 @@ func ESC(_ bytes: [UInt8], index: inout Int) -> Void {
         }
         setMode(src: mode, dist: &G3)
         index += 2
-        return
+        return Control(.ESC, payload: [param, param2])
     }
     fatalError("未定義のパラメータ: \(String(format: "%02x", param))")
 }
