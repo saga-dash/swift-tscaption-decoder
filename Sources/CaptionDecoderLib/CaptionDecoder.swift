@@ -140,7 +140,8 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
                         controls.append(control)
                     }
                 }
-                let unit = Unit.init(str: "", control: controls)
+                var unit = Unit.init(str: "", control: controls)
+                unit.eventId = presentEventId
                 return unit
             default:
                 print("dataUnit.dataUnitParameter: \(dataUnit.dataUnitParameter)")
