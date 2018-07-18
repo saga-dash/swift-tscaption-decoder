@@ -470,28 +470,6 @@ func CSI(_ bytes: [UInt8], index: inout Int) -> Control {
     let control = Control(.CSI, command: command, payload: Array(bytes[_index..<index]))
     return control
 }
-public struct Unit {
-    public let str: String
-    public let control: [Control]
-}
-public struct Control {
-    public let command: String
-    public let code: ControlCode
-    public let payload: [UInt8]
-    public init(_ code: ControlCode, command: String? = nil, payload: [UInt8] = []) {
-        self.command = command ?? "\(code)"
-        self.code = code
-        self.payload = payload
-    }
-}
-extension Control : CustomStringConvertible {
-    public var description: String {
-        return "Control(command: \(command)"
-            + ", code: \(code)"
-            + ", payload: \(payload.map({String(format: "0x%02x", $0)}).joined(separator: ","))"
-            + ")"
-    }
-}
 
 struct MFMode {
     let charSet: CharSet

@@ -14,6 +14,7 @@ let PES_PRIVATE_DATA = 0x06             // ARIB STD-B24 第三編 表 4-1 伝送
 var targetPMTPID: UInt16 = 0xFFFF
 var targetCaptionPID: UInt16 = 0xFFFF
 var stock: Dictionary<UInt16, Data> = [:]
+var presentEventId: UInt16 = 0xFFFF
 
 public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
     if data.count != LENGTH {
@@ -125,7 +126,8 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
             switch dataUnit.dataUnitParameter {
             case 0x20:
                 //printHexDumpForBytes(bytes: dataUnit.payload)
-                let result = ARIB8charDecode(dataUnit)
+                var result = ARIB8charDecode(dataUnit)
+                result.eventId = presentEventId
                 return result
             case 0x30, 0x31:
                 //print(newData.map({String(format: "0x%02x", $0)}).joined(separator: ", "))
@@ -170,9 +172,13 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         if eit.tableId != 0x004E {
             return []
         }
-        print(eit.header)
-        print(eit)
-        printHexDumpForBytes(newData)
+        guard let event = eit.events.first(where: {$0.runningStatus == 0x04 || $0.runningStatus == 0x02}) else {
+            return []
+        }
+        // ToDo: スクランブル時の処理
+        //print(eit.header)
+        //print(eit)
+        presentEventId = event.eventId
     }
     return []
 }

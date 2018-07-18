@@ -48,7 +48,7 @@ public struct EventInformationTable {
             let event = Event(bytes)
             let sub = event.length // 可変長(Event)
             if sub > payloadLength {
-                return nil
+                break
             }
             array.append(event)
             bytes = Array(bytes.suffix(bytes.count - sub))
@@ -62,6 +62,7 @@ extension EventInformationTable : CustomStringConvertible {
         return "EventInformationTable(PID: \(String(format: "0x%04x", header.PID))"
             + ", tableId: \(String(format: "0x%02x", tableId))"
             + ", serviceId: \(String(format: "0x%04x", serviceId))"
+            + ", serviceName: \(serviceName)"
             + ", sectionLength: \(String(format: "0x%04x", sectionLength))"
             + ", transportStreamId: \(String(format: "0x%04x", transportStreamId))"
             + ", originalNetworkId: \(String(format: "0x%04x", originalNetworkId))"
@@ -81,13 +82,27 @@ extension EventInformationTable {
     public var sectionLength: UInt16 {
         return programAssociationSection.sectionLength
     }
+    public var serviceName: String {
+        switch serviceId {
+        case 11, 12:
+            return "g1"
+        case 21, 23:
+            return "e1"
+        case 101, 102:
+            return "s1"
+        case 103, 104:
+            return "s3"
+        default:
+            return ""
+        }
+    }
 }
 
 public struct Event {
     public let eventId: UInt16                  // 16  uimsbf
     public let startTime: UInt64                // 40  bslbf
     public let duration: UInt32                 // 24  uimsbf
-    public let runningStatus: UInt8             //  3  uimsbf
+    public let runningStatus: UInt8             //  3  uimsbf 表 5-6 SDT 進行状態
     public let freeCAMode: UInt8                //  1  bslbf
     public let descriptorsLoopLength: UInt16    // 12  uimsbf
     public init(_ bytes: [UInt8]) {
