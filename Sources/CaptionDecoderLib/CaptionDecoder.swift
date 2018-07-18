@@ -131,7 +131,15 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
                 //print(newData.map({String(format: "0x%02x", $0)}).joined(separator: ", "))
                 let drcs = DRCS(dataUnit.payload)
                 //print(drcs)
-                return nil
+                var controls: [Control] = []
+                for code in drcs.codes {
+                    for font in code.fonts {
+                        let control = Control.init(.DRCS, payload: font.payload)
+                        controls.append(control)
+                    }
+                }
+                let unit = Unit.init(str: "", control: controls)
+                return unit
             default:
                 print("dataUnit.dataUnitParameter: \(dataUnit.dataUnitParameter)")
                 return nil

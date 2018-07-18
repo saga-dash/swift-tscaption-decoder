@@ -57,6 +57,7 @@ public enum ControlCode: UInt8 {
     //    case 15/15  = 0xFF
     // 出力用に文字を定義
     case CHAR   = 0x10
+    case DRCS   = 0x11
 }
 enum CSIChar: UInt8 {
     case SWF    = 0x53
