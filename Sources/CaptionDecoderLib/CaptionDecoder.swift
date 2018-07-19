@@ -164,6 +164,10 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         if (stock[header.PID] != nil) {
             // ストックが存在し先頭TSならデータがおかしいので置き換える
             if header.payloadUnitStartIndicator == 0x01 {
+                if header.payload[0] != 0x004E {
+                    // tableId: payload[0] == 0x004E == P/F
+                    return []
+                }
                 //stock.removeValue(forKey: header.PID)
                 stock[header.PID] = data
                 newData = data
@@ -171,6 +175,10 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
                 newData = stock[header.PID]! + data.suffix(from: 4) // header 4byte
             }
         } else {
+            if header.payload[0] != 0x004E {
+                // tableId: payload[0] == 0x004E == P/F
+                return []
+            }
             newData = data
         }
         guard let eit = EventInformationTable(newData) else {
@@ -181,9 +189,7 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         defer {
             stock.removeValue(forKey: header.PID)
         }
-        if eit.tableId != 0x004E {
-            return []
-        }
+        // present(実行中？): 0x02, 0x04
         guard let event = eit.events.first(where: {$0.runningStatus == 0x04 || $0.runningStatus == 0x02}) else {
             return []
         }
