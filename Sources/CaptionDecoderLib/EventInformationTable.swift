@@ -84,11 +84,11 @@ extension EventInformationTable {
     }
     public var serviceName: String {
         switch serviceId {
-        case 11, 12:
+        case 1024, 1025:
             return "g1"
-        case 21, 23:
+        case 1032, 1033, 1034:
             return "e1"
-        case 101, 102:
+        case 101, 102, 700, 701, 707:
             return "s1"
         case 103, 104:
             return "s3"
