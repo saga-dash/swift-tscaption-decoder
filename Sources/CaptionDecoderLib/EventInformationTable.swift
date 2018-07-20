@@ -117,8 +117,8 @@ public struct Event {
 extension Event : CustomStringConvertible {
     public var description: String {
         return "{eventId: \(String(format: "0x%04x", eventId))"
-            + ", startTime: \(String(format: "0x%010x", startTime))"
-            + ", duration: \(String(format: "0x%06x", duration))"
+            + ", startTime: \(String(format: "0x%x", startTime))(\(eventDateStr ?? ""))"
+            + ", duration: \(String(format: "0x%06x", duration))(\(eventSec)s)"
             + ", runningStatus: \(String(format: "0x%02x", runningStatus))"
             + ", freeCAMode: \(String(format: "0x%04x", freeCAMode))"
             + ", descriptorsLoopLength: \(String(format: "0x%04x", descriptorsLoopLength))"
@@ -129,5 +129,44 @@ extension Event {
     var length: Int {
         // 12 byte(固定分) + 可変長
         return Int(12 + descriptorsLoopLength)
+    }
+    var eventDate: Date? {
+        if startTime == 0xFFFFFFFFFF {
+            return nil
+        }
+        let MJD = Double(startTime>>24)
+        let _year = Double(Int((MJD - 15078.2) / 365.25))
+        let _month = Int((MJD-14956.1-Double(Int(_year * 365.25)))/30.6001)
+        let day = Int(MJD-14956.0-Double(Int(_year * 365.25))-Double(Int(Double(_month) * 30.6001)))
+        let K = _month == 14 || _month == 15 ? 1 : 0
+        let year = Int(_year) + K + 1900
+        let month = Int(_month) - 1 - K * 12
+        let _hour: Int = Int((startTime&0xFF0000)>>16)
+        let hour: Int = (_hour>>4)*10 + _hour&0x0F
+        let _minute: Int = Int((startTime&0x00FF00)>>8)
+        let minute: Int = (_minute>>4)*10 + _minute&0x0F
+        let _second: Int = Int(startTime&0x0000FF)
+        let second: Int = (_second>>4)*10 + _second&0x0F
+        let dateComponets = DateComponents(calendar: Calendar.current, timeZone: TimeZone(identifier: "Asia/Tokyo")!, year: year, month: month, day: day, hour: hour, minute: minute, second: second)
+        return dateComponets.date
+    }
+    var eventDateStr: String? {
+        guard let date = eventDate else {
+            return nil
+        }
+        let f = DateFormatter()
+        f.timeStyle = .medium
+        f.dateStyle = .medium
+        f.locale = Locale(identifier: "ja_JP")
+        return f.string(from: date)
+    }
+    var eventSec: Int {
+        let _hour: Int = Int((duration&0xFF0000)>>16)
+        let hour: Int = (_hour>>4)*10 + _hour&0x0F
+        let _minute: Int = Int((duration&0x00FF00)>>8)
+        let minute: Int = (_minute>>4)*10 + _minute&0x0F
+        let _second: Int = Int(duration&0x0000FF)
+        let second: Int = (_second>>4)*10 + _second&0x0F
+        return second + minute * 60 + hour * 60 * 60
     }
 }
