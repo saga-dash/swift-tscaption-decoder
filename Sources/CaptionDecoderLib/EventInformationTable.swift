@@ -47,7 +47,7 @@ public struct EventInformationTable {
         repeat {
             let event = Event(bytes)
             let sub = event.length // 可変長(Event)
-            if sub > payloadLength {
+            if sub > bytes.count {
                 break
             }
             array.append(event)
