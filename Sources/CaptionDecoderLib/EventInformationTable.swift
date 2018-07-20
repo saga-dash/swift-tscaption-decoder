@@ -130,6 +130,13 @@ extension Event {
         // 12 byte(固定分) + 可変長
         return Int(12 + descriptorsLoopLength)
     }
+    func isOnAir(_ target: Date = Date()) -> Bool {
+        guard let date = eventDate else {
+            return false
+        }
+        let interval = Int(date.timeIntervalSince(target))
+        return 0 < interval && interval < eventSec
+    }
     var eventDate: Date? {
         if startTime == 0xFFFFFFFFFF {
             return nil

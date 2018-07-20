@@ -194,12 +194,17 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
             stock.removeValue(forKey: header.PID)
         }
         // present(実行中？): 0x02, 0x04
-        guard let event = eit.events.first(where: {$0.runningStatus == 0x04 || $0.runningStatus == 0x02}) else {
+        guard let event = eit.events.first else {//(where: {$0.runningStatus == 0x04 || $0.runningStatus == 0x02}) else {
             return []
         }
         // ToDo: スクランブル時の処理
         //print(eit.header)
+        //printHexDumpForBytes(newData)
         //print(eit)
+        //print(event)
+        if !event.isOnAir() {
+            return []
+        }
         presentEventId = event.eventId
         presentServiceId = eit.serviceName
     }
