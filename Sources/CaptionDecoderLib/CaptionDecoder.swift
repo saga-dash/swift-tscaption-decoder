@@ -14,8 +14,8 @@ let PES_PRIVATE_DATA = 0x06             // ARIB STD-B24 第三編 表 4-1 伝送
 var targetPMTPID: UInt16 = 0xFFFF
 var targetCaptionPID: UInt16 = 0xFFFF
 var stock: Dictionary<UInt16, Data> = [:]
-var presentEventId: UInt16 = 0xFFFF
-var presentServiceId: String = ""
+var presentEventId: UInt16? = nil
+var presentServiceId: String? = nil
 
 public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
     if data.count != LENGTH {
