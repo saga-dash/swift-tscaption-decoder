@@ -134,7 +134,7 @@ extension Event {
         guard let date = eventDate else {
             return false
         }
-        let interval = Int(date.timeIntervalSince(target))
+        let interval = Int(target.timeIntervalSince(date))
         return 0 < interval && interval < eventSec
     }
     var eventDate: Date? {
