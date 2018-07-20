@@ -109,8 +109,8 @@ public struct Event {
         self.eventId = UInt16(bytes[0])<<8 | UInt16(bytes[1])
         self.startTime = UInt64(bytes[2])<<32 | UInt64(bytes[3])<<24 | UInt64(bytes[4])<<16 | UInt64(bytes[5])<<8 | UInt64(bytes[6])
         self.duration = UInt32(bytes[7])<<16 | UInt32(bytes[8])<<8 | UInt32(bytes[9])
-        self.runningStatus = bytes[10]&0xE0>>5
-        self.freeCAMode = bytes[10]&0x10>>4
+        self.runningStatus = (bytes[10]&0xE0)>>5
+        self.freeCAMode = (bytes[10]&0x10)>>4
         self.descriptorsLoopLength = UInt16(bytes[10]&0x0F)<<8 | UInt16(bytes[11])
     }
 }
