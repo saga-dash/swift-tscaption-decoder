@@ -159,6 +159,10 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         if (header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil) {
             return []
         }
+        // g1,e1で不正データが入ってくる。
+        if !header.valid {
+            return []
+        }
         let newData: Data
         // 前のデータと結合
         if (stock[header.PID] != nil) {

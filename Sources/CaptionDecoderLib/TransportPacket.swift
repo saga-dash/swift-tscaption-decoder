@@ -9,6 +9,7 @@
 import Foundation
 
 public struct TransportPacket {
+    let data: Data
     public let syncByte: UInt8                      //  8  bslbf
     public let transportErrorIndicator: UInt8       //  1  bslbf
     public let payloadUnitStartIndicator: UInt8     //  1  bslbf
@@ -17,9 +18,9 @@ public struct TransportPacket {
     public let transportScramblingControl: UInt8    //  2  bslbf
     public let adaptationFieldControl: UInt8        //  2  bslbf
     public let continuityCounter: UInt8             //  4  uimsbf
-    public let adaptationField: AdaptationField?    //  n  byte
-    public let payload: [UInt8]                     //  n  byte
+    let isPes: Bool
     public init(_ data: Data, isPes: Bool = false) {
+        self.data = data
         let bytes = [UInt8](data)
         self.syncByte = bytes[0]
         self.transportErrorIndicator = (bytes[1]&0x80)>>7
@@ -29,11 +30,7 @@ public struct TransportPacket {
         self.transportScramblingControl = (bytes[3]&0xC0)>>6
         self.adaptationFieldControl = (bytes[3]&0x30)>>4
         self.continuityCounter = (bytes[3]&0x0F)
-        self.adaptationField = (adaptationFieldControl&0x02)>>1 == 1 ? AdaptationField(data) : nil
-        let headerLength = 4 // Header
-            + (adaptationField?.adaptationFieldLength ?? 0) // AdaptationFieldLength
-            + (adaptationField==nil && isPes ? 0 : 1) // pointer_field
-        self.payload = Array(bytes.suffix(bytes.count - Int(headerLength))) // HeaderLength + Payload = 188
+        self.isPes = isPes
     }
 }
 extension TransportPacket {
@@ -42,6 +39,22 @@ extension TransportPacket {
     }
     public var payloadFlag: UInt8 {
         return (adaptationFieldControl&0x01)
+    }
+    public var adaptationField: AdaptationField? {
+        return adaptationFlag == 1 ? AdaptationField(data) : nil
+    }
+    var noPointerField: Bool {
+        return adaptationField==nil && isPes
+    }
+    public var payload: [UInt8] {
+        let bytes = [UInt8](data)
+        let headerLength = 4 // Header
+            + (adaptationField?.adaptationFieldLength ?? 0) // AdaptationFieldLength
+            + (noPointerField ? 0 : 1) // pointer_field
+        return Array(bytes.suffix(bytes.count - Int(headerLength))) // HeaderLength + Payload = 188
+    }
+    public var valid: Bool {
+        return !(adaptationFlag == 0 && payloadUnitStartIndicator == 0x01 && data[4] != 0x00)
     }
 }
 public struct AdaptationField {
