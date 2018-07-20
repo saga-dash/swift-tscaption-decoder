@@ -79,7 +79,7 @@ struct Font {
     let geometricDataLength: UInt16?    // 16 uimsbf
     let payload: [UInt8]
     init(_ bytes: [UInt8]) {
-        self.fontId = bytes[0]&0xF0>>4
+        self.fontId = (bytes[0]&0xF0)>>4
         self.mode = bytes[0]&0x0F
         let isCompression = bytes[0]&0x0F != 0x0 && bytes[0]&0x0F != 0x1
         if isCompression {
