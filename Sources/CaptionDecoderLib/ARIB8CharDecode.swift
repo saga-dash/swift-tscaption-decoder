@@ -35,6 +35,15 @@ public func ARIB8charDecode(_ dataUnit: DataUnit) -> Unit {
     GR = UnsafeMutablePointer(&G2)
     return Analyze(dataUnit.payload)
 }
+public func ARIB8charDecode(_ bytes: [UInt8]) -> Unit {
+    G0 = MFMode(charSet: .GSet, charTable: CharTableGset.KANJI.rawValue, byte: 2)!
+    G1 = MFMode(charSet: .GSet, charTable: CharTableGset.ASCII.rawValue, byte: 1)!
+    G2 = MFMode(charSet: .GSet, charTable: CharTableGset.HIRA.rawValue, byte: 1)!
+    G3 = MFMode(charSet: .DRCS, charTable: CharTableDRCS.MACRO.rawValue, byte: 1)!
+    GL = UnsafeMutablePointer(&G0)
+    GR = UnsafeMutablePointer(&G2)
+    return Analyze(bytes)
+}
 func Analyze(_ bytes: [UInt8]) -> Unit {
     var index = 0
     var str = ""

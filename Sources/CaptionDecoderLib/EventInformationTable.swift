@@ -105,6 +105,7 @@ public struct Event {
     public let runningStatus: UInt8             //  3  uimsbf 表 5-6 SDT 進行状態
     public let freeCAMode: UInt8                //  1  bslbf
     public let descriptorsLoopLength: UInt16    // 12  uimsbf
+    public let payload: [UInt8]                 //  n byte ARIB STD-B10 第1部  図 6.2-12 短形式イベント記述子のデータ構造
     public init(_ bytes: [UInt8]) {
         self.eventId = UInt16(bytes[0])<<8 | UInt16(bytes[1])
         self.startTime = UInt64(bytes[2])<<32 | UInt64(bytes[3])<<24 | UInt64(bytes[4])<<16 | UInt64(bytes[5])<<8 | UInt64(bytes[6])
@@ -112,6 +113,9 @@ public struct Event {
         self.runningStatus = (bytes[10]&0xE0)>>5
         self.freeCAMode = (bytes[10]&0x10)>>4
         self.descriptorsLoopLength = UInt16(bytes[10]&0x0F)<<8 | UInt16(bytes[11])
+        var bytes = Array(bytes.suffix(bytes.count - numericCast(12))) // 12 byte(Eventサイズ)
+        bytes = Array(bytes.prefix(numericCast(descriptorsLoopLength)))
+        self.payload = bytes
     }
 }
 extension Event : CustomStringConvertible {

@@ -205,6 +205,9 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         if !event.isOnAir() {
             return []
         }
+        print(event)
+        printHexDumpForBytes(bytes: eit.payload)
+        print(ARIB8charDecode(event.payload))
         presentEventId = event.eventId
         presentServiceId = eit.serviceName
     }
