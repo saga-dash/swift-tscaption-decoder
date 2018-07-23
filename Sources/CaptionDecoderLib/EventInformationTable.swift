@@ -88,7 +88,7 @@ extension EventInformationTable {
             return "g1"
         case 1032, 1033, 1034:
             return "e1"
-        case 101, 102, 700, 701, 707:
+        case 101, 102:
             return "s1"
         case 103, 104:
             return "s3"
