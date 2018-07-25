@@ -38,6 +38,19 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         targetPMTPID = program.PID
         return []
     }
+    // TDT or TOT?
+    if header.PID == 0x14 {
+        guard let date = TimeOffsetTable(data)?.date else {
+            guard let date = TimeandDateTable(data)?.date else {
+                print("不正な時刻")
+                return []
+            }
+            //print("TDT", convertJSTStr(date) ?? "error convert time")
+            return []
+        }
+        //print("TOT", convertJSTStr(date) ?? "error convert time")
+        return []
+    }
     // PMT?
     else if header.PID == targetPMTPID {
         // はじめのunitではない&&前のデータがない
