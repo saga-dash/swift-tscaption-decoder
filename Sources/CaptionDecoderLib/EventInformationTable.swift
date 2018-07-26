@@ -88,7 +88,7 @@ extension EventInformationTable {
             return "g1"
         case 1032, 1033, 1034:
             return "e1"
-        case 101, 102, 700, 701, 707:
+        case 101, 102:
             return "s1"
         case 103, 104:
             return "s3"
@@ -142,42 +142,18 @@ extension Event {
         return 0 < interval && interval < eventSec
     }
     var eventDate: Date? {
-        if startTime == 0xFFFFFFFFFF {
-            return nil
-        }
-        let MJD = Double(startTime>>24)
-        let _year = Double(Int((MJD - 15078.2) / 365.25))
-        let _month = Int((MJD-14956.1-Double(Int(_year * 365.25)))/30.6001)
-        let day = Int(MJD-14956.0-Double(Int(_year * 365.25))-Double(Int(Double(_month) * 30.6001)))
-        let K = _month == 14 || _month == 15 ? 1 : 0
-        let year = Int(_year) + K + 1900
-        let month = Int(_month) - 1 - K * 12
-        let _hour: Int = Int((startTime&0xFF0000)>>16)
-        let hour: Int = (_hour>>4)*10 + _hour&0x0F
-        let _minute: Int = Int((startTime&0x00FF00)>>8)
-        let minute: Int = (_minute>>4)*10 + _minute&0x0F
-        let _second: Int = Int(startTime&0x0000FF)
-        let second: Int = (_second>>4)*10 + _second&0x0F
-        let dateComponets = DateComponents(calendar: Calendar.current, timeZone: TimeZone(identifier: "Asia/Tokyo")!, year: year, month: month, day: day, hour: hour, minute: minute, second: second)
-        return dateComponets.date
+        let date = convertMJD(startTime)
+        return date
     }
     var eventDateStr: String? {
-        guard let date = eventDate else {
-            return nil
-        }
-        let f = DateFormatter()
-        f.timeStyle = .medium
-        f.dateStyle = .medium
-        f.locale = Locale(identifier: "ja_JP")
-        return f.string(from: date)
+        let str = convertJSTStr(eventDate)
+        return str
     }
     var eventSec: Int {
-        let _hour: Int = Int((duration&0xFF0000)>>16)
-        let hour: Int = (_hour>>4)*10 + _hour&0x0F
-        let _minute: Int = Int((duration&0x00FF00)>>8)
-        let minute: Int = (_minute>>4)*10 + _minute&0x0F
-        let _second: Int = Int(duration&0x0000FF)
-        let second: Int = (_second>>4)*10 + _second&0x0F
-        return second + minute * 60 + hour * 60 * 60
+        let date = convertARIBTime(duration)
+        if date.second == nil || date.minute == nil || date.hour == nil {
+            return 0
+        }
+        return date.second! + date.minute! * 60 + date.hour! * 60 * 60
     }
 }

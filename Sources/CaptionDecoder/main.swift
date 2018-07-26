@@ -17,7 +17,7 @@ func autoreleasepool(_ code: () -> ()) {
 }
 #endif
 
-extension ComponentType : ArgumentConvertible {
+extension StreamComponentTag : ArgumentConvertible {
     public init(parser: ArgumentParser) throws {
         switch parser.shift() {
         case "subtitle":
@@ -57,13 +57,14 @@ extension ComponentType : ArgumentConvertible {
         }
     }
     public var description: String {
-        return "\(String(format: "0x%02x", self as! CVarArg))"
+        return "\(String(format: "0x%02x", self.rawValue))"
     }
 }
 
 let main = command(
     Option<String>("file", default: "", flag: "f"),
-    Option<ComponentType>("componentType", default: .subtitle, flag: "c", description: "subtitle, subtitle{1-7}, teletext, teletext{1-7}")) { inputFile, componentType in
+    Option<StreamComponentTag>("componentTag", default: .subtitle, flag: "c", description: "subtitle, subtitle{1-7}, teletext, teletext{1-7}")) { inputFile, streamComponentTag in
+    let options = Options(streamComponentTag)
     var file: FileHandle
     if inputFile.count != 0 {
         file = FileHandle.init(forReadingAtPath: inputFile)!
@@ -76,7 +77,6 @@ let main = command(
             if data.count != LENGTH {
                 exit(-1)
             }
-            let options = Options(componentType)
             let result = CaptionDecoderMain(data: data, options: options)
             for unit in result {
                 //print(unit.str)
