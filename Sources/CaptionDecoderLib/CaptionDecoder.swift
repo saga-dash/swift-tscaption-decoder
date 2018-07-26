@@ -16,6 +16,7 @@ var targetCaptionPID: UInt16 = 0xFFFF
 var stock: Dictionary<UInt16, Data> = [:]
 var presentEventId: UInt16? = nil
 var presentServiceId: String? = nil
+var tsDate: Date = Date()
 
 public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
     if data.count != LENGTH {
@@ -36,6 +37,21 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
             fatalError("Not Found Program in PAT")
         }
         targetPMTPID = program.PID
+        return []
+    }
+    // TDT or TOT?
+    if header.PID == 0x14 {
+        guard let date = TimeOffsetTable(data)?.date else {
+            guard let date = TimeandDateTable(data)?.date else {
+                print("不正な時刻")
+                return []
+            }
+            //print("TDT", convertJSTStr(date) ?? "error convert time")
+            tsDate = date
+            return []
+        }
+        //print("TOT", convertJSTStr(date) ?? "error convert time")
+        tsDate = date
         return []
     }
     // PMT?
@@ -202,7 +218,8 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         //printHexDumpForBytes(newData)
         //print(eit)
         //print(event)
-        if !event.isOnAir() {
+        if !event.isOnAir(tsDate) {
+            print(event)
             return []
         }
         presentEventId = event.eventId
