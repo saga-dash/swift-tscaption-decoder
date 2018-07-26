@@ -77,7 +77,7 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         // 字幕: 0x30, 0x87
         // 文字スーパー: 0x38, 0x88
         // ARIB TR-B14 第四編 第1部14 表 14-1 component_tag の割当て
-        guard let stream = streams.first(where:{nil != $0.descriptor.first(where:{$0.componentTag == options.componentType.rawValue})}) else {
+        guard let stream = streams.first(where:{nil != $0.descriptor.first(where:{$0.componentTag == options.streamComponentTag.rawValue})}) else {
             print("字幕無いよ2")
             return []
         }
@@ -212,12 +212,12 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
 }
 
 public struct Options {
-    let componentType: ComponentType
-    public init(_ componentType: ComponentType) {
-        self.componentType = componentType
+    let streamComponentTag: StreamComponentTag
+    public init(_ streamComponentTag: StreamComponentTag) {
+        self.streamComponentTag = streamComponentTag
     }
 }
-public enum ComponentType: UInt8 {
+public enum StreamComponentTag: UInt8 {
     case subtitle   = 0x30
     case subtitle1  = 0x31
     case subtitle2  = 0x32

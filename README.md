@@ -33,5 +33,5 @@ Usage:
 
 Options:
     -f  --file # ない場合標準入力を待機
-    -c  --componentType - subtitle, subtitle{1-7}, teletext, teletext{1-7}
+    -c  --componentTag - subtitle, subtitle{1-7}, teletext, teletext{1-7}
 ```
