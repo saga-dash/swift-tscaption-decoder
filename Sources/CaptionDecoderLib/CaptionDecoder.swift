@@ -16,6 +16,7 @@ var targetCaptionPID: UInt16 = 0xFFFF
 var stock: Dictionary<UInt16, Data> = [:]
 var presentEventId: UInt16? = nil
 var presentServiceId: String? = nil
+var tsDate: Date = Date()
 
 public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
     if data.count != LENGTH {
@@ -46,9 +47,11 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
                 return []
             }
             //print("TDT", convertJSTStr(date) ?? "error convert time")
+            tsDate = date
             return []
         }
         //print("TOT", convertJSTStr(date) ?? "error convert time")
+        tsDate = date
         return []
     }
     // PMT?
@@ -215,7 +218,8 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         //printHexDumpForBytes(newData)
         //print(eit)
         //print(event)
-        if !event.isOnAir() {
+        if !event.isOnAir(tsDate) {
+            print(event)
             return []
         }
         presentEventId = event.eventId
