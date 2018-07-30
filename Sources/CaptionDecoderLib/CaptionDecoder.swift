@@ -17,6 +17,11 @@ var stock: Dictionary<UInt16, Data> = [:]
 var presentEventId: UInt16? = nil
 var presentServiceId: String? = nil
 var tsDate: Date = Date()
+var blackList: [String] = [
+    "お住まいの地域の詳しい気象情報、全国の天気ほか",
+    "デジタル放送のコピー制御（著作権保護）システムとＢ－ＣＡＳカードなどについての説明と問い合わせなど",
+    "いつでも見ることができるＮＨＫの最新のニュース",
+]
 
 public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
     if data.count != LENGTH {
@@ -176,41 +181,30 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
             return []
         }
         let newData: Data
-        print(header.continuityCounter)
         // 前のデータと結合
         if (stock[header.PID] != nil) {
             // ストックが存在し先頭TSならデータがおかしいので置き換える
             if header.payloadUnitStartIndicator == 0x01 {
-                print("fuck data")
                 return []
             } else {
                 if isCorrectCounter(stock[header.PID]!, data) {
-                    print("@@@@@@@@@")
                     newData = stock[header.PID]! + header.payload
                 } else {
-                    print("hgoera")
                     stock.removeValue(forKey: header.PID)
                     return []
                 }
             }
         } else {
             if header.payload[0] != 0x004E {
-                print("not 4E")
                 // tableId: payload[0] == 0x004E == P/F
                 return []
             }
             if header.payloadUnitStartIndicator != 0x01 {
-                print("99999")
                 return []
-            }
-            print("new")
-            if header.payloadUnitStartIndicator == 0x01 {
-                print("aaaa")
             }
             newData = data
         }
         guard let eit = EventInformationTable(newData) else {
-            print("sectionNumber", newData[4+1+6])
             // データが足りていなければ、ストックする
             stock[header.PID] = newData
             return []
@@ -223,14 +217,14 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
             return []
         }
         let event = eit.events.first!
+        // S1のガイド用番組を除外
+        if blackList.contains(event.descriptor.textStr) {
+            return []
+        }
         // ToDo: スクランブル時の処理
         //print(eit.header)
         //printHexDumpForBytes(newData)
         //print(eit)
-        //print(event)
-        //print(header)
-        print(eit.sectionLength)
-        print(eit.payload.count)
         print(event)
         presentEventId = event.eventId
         presentServiceId = eit.serviceName

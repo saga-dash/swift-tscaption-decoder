@@ -24,13 +24,11 @@ public struct EventInformationTable {
         self.programAssociationSection = ProgramAssociationSection(data, header)
         let tableId = programAssociationSection.tableId
         if tableId < 0x4E || 0x6F < tableId {
-            print("eeeee")
             return nil
         }
         var bytes = programAssociationSection.payload
         // 5 byte(programAssociationSection終わりまで)
         if bytes.count < Int(programAssociationSection.sectionLength)-5 {
-            print("rrrrr", bytes.count, Int(programAssociationSection.sectionLength)-5)
             return nil
         }
         self.transportStreamId = UInt16(bytes[0])<<8 | UInt16(bytes[1])
@@ -39,7 +37,6 @@ public struct EventInformationTable {
         self.lastTableId = bytes[5]
         self.payload = Array(bytes.suffix(bytes.count - Int(6))) // 6byte(固定長)
         if Int(programAssociationSection.sectionLength) - 11 - 4 < 0 {
-            print("tyuio")
             return nil
         }
         var payloadLength = programAssociationSection.sectionLength
@@ -51,7 +48,6 @@ public struct EventInformationTable {
             let event = Event(bytes)
             let sub = event.length // 可変長(Event)
             if sub > bytes.count {
-                print("break")
                 break
             }
             array.append(event)
