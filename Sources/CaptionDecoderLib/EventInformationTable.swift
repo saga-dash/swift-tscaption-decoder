@@ -24,11 +24,13 @@ public struct EventInformationTable {
         self.programAssociationSection = ProgramAssociationSection(data, header)
         let tableId = programAssociationSection.tableId
         if tableId < 0x4E || 0x6F < tableId {
+            print("eeeee")
             return nil
         }
         var bytes = programAssociationSection.payload
         // 5 byte(programAssociationSection終わりまで)
         if bytes.count < Int(programAssociationSection.sectionLength)-5 {
+            print("rrrrr", bytes.count, Int(programAssociationSection.sectionLength)-5)
             return nil
         }
         self.transportStreamId = UInt16(bytes[0])<<8 | UInt16(bytes[1])
@@ -37,6 +39,7 @@ public struct EventInformationTable {
         self.lastTableId = bytes[5]
         self.payload = Array(bytes.suffix(bytes.count - Int(6))) // 6byte(固定長)
         if Int(programAssociationSection.sectionLength) - 11 - 4 < 0 {
+            print("tyuio")
             return nil
         }
         var payloadLength = programAssociationSection.sectionLength
@@ -48,6 +51,7 @@ public struct EventInformationTable {
             let event = Event(bytes)
             let sub = event.length // 可変長(Event)
             if sub > bytes.count {
+                print("break")
                 break
             }
             array.append(event)
@@ -70,6 +74,12 @@ extension EventInformationTable : CustomStringConvertible {
             + ", lastTableId: \(String(format: "0x%04x", lastTableId))"
             + ", events: \(events)"
             + ")"
+    }
+    public var isPresent: Bool {
+        return tableId == 0x4E && programAssociationSection.sectionNumber == 0x00
+    }
+    public var isFollowing: Bool {
+        return tableId == 0x4E && programAssociationSection.sectionNumber == 0x01
     }
 }
 extension EventInformationTable {
@@ -105,7 +115,8 @@ public struct Event {
     public let runningStatus: UInt8             //  3  uimsbf 表 5-6 SDT 進行状態
     public let freeCAMode: UInt8                //  1  bslbf
     public let descriptorsLoopLength: UInt16    // 12  uimsbf
-    public let payload: [UInt8]                 //  n byte ARIB STD-B10 第1部  図 6.2-12 短形式イベント記述子のデータ構造
+    public let descriptor: EventDescriptor      //  1  byte + descriptorLength
+    // ToDo: CRC
     public init(_ bytes: [UInt8]) {
         self.eventId = UInt16(bytes[0])<<8 | UInt16(bytes[1])
         self.startTime = UInt64(bytes[2])<<32 | UInt64(bytes[3])<<24 | UInt64(bytes[4])<<16 | UInt64(bytes[5])<<8 | UInt64(bytes[6])
@@ -115,7 +126,7 @@ public struct Event {
         self.descriptorsLoopLength = UInt16(bytes[10]&0x0F)<<8 | UInt16(bytes[11])
         var bytes = Array(bytes.suffix(bytes.count - numericCast(12))) // 12 byte(Eventサイズ)
         bytes = Array(bytes.prefix(numericCast(descriptorsLoopLength)))
-        self.payload = bytes
+        self.descriptor = EventDescriptor(bytes)
     }
 }
 extension Event : CustomStringConvertible {
@@ -126,6 +137,7 @@ extension Event : CustomStringConvertible {
             + ", runningStatus: \(String(format: "0x%02x", runningStatus))"
             + ", freeCAMode: \(String(format: "0x%04x", freeCAMode))"
             + ", descriptorsLoopLength: \(String(format: "0x%04x", descriptorsLoopLength))"
+            + ", descriptor: \(descriptor)"
             + "}"
     }
 }
@@ -155,5 +167,42 @@ extension Event {
             return 0
         }
         return date.second! + date.minute! * 60 + date.hour! * 60 * 60
+    }
+}
+// ARIB STD-B10 第1部  図 6.2-12 短形式イベント記述子のデータ構造
+public struct EventDescriptor {
+    public let descriptorTag: UInt8                 //  8 uimsbf
+    public let descriptorLength: UInt8              //  8 uimsbf
+    public let languageCode: UInt32                 // 24 uimsbf
+    public let eventNameLength: UInt8               //  8 uimsbf
+    public let eventName: [UInt8]                   //  n byte
+    public let textLength: UInt8                    //  8 uimsbf
+    public let text: [UInt8]                        //  n byte
+    init(_ bytes: [UInt8]) {
+        self.descriptorTag = bytes[0]
+        self.descriptorLength = bytes[1]
+        self.languageCode = UInt32(bytes[2])<<16 | UInt32(bytes[3])<<8 | UInt32(bytes[4])
+        self.eventNameLength = bytes[5]
+        var index = 6+numericCast(eventNameLength)
+        self.eventName = Array(bytes[6..<index])
+        self.textLength = bytes[index]
+        index += 1
+        self.text = Array(bytes[index..<index+numericCast(textLength)])
+    }
+}
+extension EventDescriptor : CustomStringConvertible {
+    public var description: String {
+        return "EventDescriptor(descriptorTag: \(String(format: "0x%02x", descriptorTag))"
+            + ", descriptorLength: \(String(format: "0x%02x", descriptorLength))"
+            + ", languageCode: \(String(format: "0x%06x", languageCode))"
+            + ", eventNameLength: \(String(format: "0x%02x", eventNameLength))(\(eventStr))"
+            + ", textLength: \(String(format: "0x%02x", textLength))(\(textStr))"
+            + ")"
+    }
+    public var eventStr: String {
+        return ARIB8charDecode(eventName).str
+    }
+    public var textStr: String {
+        return ARIB8charDecode(text).str
     }
 }

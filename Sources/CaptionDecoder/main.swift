@@ -82,7 +82,7 @@ let main = command(
                 //print(unit.str)
                 let encoder = JSONEncoder()
                 let encoded = try! encoder.encode(unit)
-                print(String(data: encoded, encoding: .utf8)!)
+                //print(String(data: encoded, encoding: .utf8)!)
 
                 fflush(stdout)
             }

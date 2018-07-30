@@ -175,33 +175,42 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         if (header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil) {
             return []
         }
-        // g1,e1で不正データが入ってくる。
-        if !header.valid {
-            return []
-        }
         let newData: Data
+        print(header.continuityCounter)
         // 前のデータと結合
         if (stock[header.PID] != nil) {
             // ストックが存在し先頭TSならデータがおかしいので置き換える
             if header.payloadUnitStartIndicator == 0x01 {
-                if header.payload[0] != 0x004E {
-                    // tableId: payload[0] == 0x004E == P/F
+                print("fuck data")
+                return []
+            } else {
+                if isCorrectCounter(stock[header.PID]!, data) {
+                    print("@@@@@@@@@")
+                    newData = stock[header.PID]! + header.payload
+                } else {
+                    print("hgoera")
+                    stock.removeValue(forKey: header.PID)
                     return []
                 }
-                //stock.removeValue(forKey: header.PID)
-                stock[header.PID] = data
-                newData = data
-            } else {
-                newData = stock[header.PID]! + data.suffix(from: 4) // header 4byte
             }
         } else {
             if header.payload[0] != 0x004E {
+                print("not 4E")
                 // tableId: payload[0] == 0x004E == P/F
                 return []
+            }
+            if header.payloadUnitStartIndicator != 0x01 {
+                print("99999")
+                return []
+            }
+            print("new")
+            if header.payloadUnitStartIndicator == 0x01 {
+                print("aaaa")
             }
             newData = data
         }
         guard let eit = EventInformationTable(newData) else {
+            print("sectionNumber", newData[4+1+6])
             // データが足りていなければ、ストックする
             stock[header.PID] = newData
             return []
@@ -209,26 +218,29 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         defer {
             stock.removeValue(forKey: header.PID)
         }
-        // present(実行中？): 0x02, 0x04
-        guard let event = eit.events.first else {//(where: {$0.runningStatus == 0x04 || $0.runningStatus == 0x02}) else {
+        // present(実行中)
+        if !eit.isPresent {
             return []
         }
+        let event = eit.events.first!
         // ToDo: スクランブル時の処理
         //print(eit.header)
         //printHexDumpForBytes(newData)
         //print(eit)
         //print(event)
-        if !event.isOnAir(tsDate) {
-            print(event)
-            return []
-        }
+        //print(header)
+        print(eit.sectionLength)
+        print(eit.payload.count)
         print(event)
-        printHexDumpForBytes(bytes: eit.payload)
-        print(ARIB8charDecode(event.payload))
         presentEventId = event.eventId
         presentServiceId = eit.serviceName
     }
     return []
+}
+func isCorrectCounter(_ src: Data, _ target: Data) -> Bool {
+    let srcCounter = Int([UInt8](src)[3]&0x0F)
+    let targetCounter = Int([UInt8](target)[3]&0x0F)
+    return (srcCounter + src.count/(LENGTH-4)) % 16 == targetCounter
 }
 
 public struct Options {
