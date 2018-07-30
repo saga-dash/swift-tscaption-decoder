@@ -225,7 +225,7 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         //print(eit.header)
         //printHexDumpForBytes(newData)
         //print(eit)
-        print(event)
+        //print(event)
         presentEventId = event.eventId
         presentServiceId = eit.serviceName
     }
