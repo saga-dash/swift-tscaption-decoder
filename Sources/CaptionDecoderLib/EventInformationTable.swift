@@ -111,7 +111,7 @@ public struct Event {
     public let runningStatus: UInt8             //  3  uimsbf 表 5-6 SDT 進行状態
     public let freeCAMode: UInt8                //  1  bslbf
     public let descriptorsLoopLength: UInt16    // 12  uimsbf
-    public let descriptor: EventDescriptor      //  1  byte + descriptorLength
+    public let descriptors: [EventDescriptor]
     // ToDo: CRC
     public init(_ bytes: [UInt8]) {
         self.eventId = UInt16(bytes[0])<<8 | UInt16(bytes[1])
@@ -122,19 +122,30 @@ public struct Event {
         self.descriptorsLoopLength = UInt16(bytes[10]&0x0F)<<8 | UInt16(bytes[11])
         var bytes = Array(bytes.suffix(bytes.count - numericCast(12))) // 12 byte(Eventサイズ)
         bytes = Array(bytes.prefix(numericCast(descriptorsLoopLength)))
-        self.descriptor = EventDescriptor(bytes)
+        var payloadLength = bytes.count
+        var array: [EventDescriptor] = []
+        repeat {
+            guard let descriptor = convertEventDescriptor(bytes) else {
+                break
+            }
+            array.append(descriptor)
+            let sub = descriptor.length // 可変長(EventDescriptor)
+            bytes = Array(bytes.suffix(bytes.count - sub))
+            payloadLength -= numericCast(sub)
+        } while payloadLength > 4 // 4 byte(CRC)
+        self.descriptors = array
     }
 }
 extension Event : CustomStringConvertible {
     public var description: String {
-        return "{eventId: \(String(format: "0x%04x", eventId))"
+        return "Event(eventId: \(String(format: "0x%04x", eventId))"
             + ", startTime: \(String(format: "0x%x", startTime))(\(eventDateStr ?? ""))"
             + ", duration: \(String(format: "0x%06x", duration))(\(eventSec)s)"
             + ", runningStatus: \(String(format: "0x%02x", runningStatus))"
             + ", freeCAMode: \(String(format: "0x%04x", freeCAMode))"
             + ", descriptorsLoopLength: \(String(format: "0x%04x", descriptorsLoopLength))"
-            + ", descriptor: \(descriptor)"
-            + "}"
+            + ", descriptors: \(descriptors)"
+            + ")"
     }
 }
 extension Event {
@@ -164,41 +175,10 @@ extension Event {
         }
         return date.second! + date.minute! * 60 + date.hour! * 60 * 60
     }
-}
-// ARIB STD-B10 第1部  図 6.2-12 短形式イベント記述子のデータ構造
-public struct EventDescriptor {
-    public let descriptorTag: UInt8                 //  8 uimsbf
-    public let descriptorLength: UInt8              //  8 uimsbf
-    public let languageCode: UInt32                 // 24 uimsbf
-    public let eventNameLength: UInt8               //  8 uimsbf
-    public let eventName: [UInt8]                   //  n byte
-    public let textLength: UInt8                    //  8 uimsbf
-    public let text: [UInt8]                        //  n byte
-    init(_ bytes: [UInt8]) {
-        self.descriptorTag = bytes[0]
-        self.descriptorLength = bytes[1]
-        self.languageCode = UInt32(bytes[2])<<16 | UInt32(bytes[3])<<8 | UInt32(bytes[4])
-        self.eventNameLength = bytes[5]
-        var index = 6+numericCast(eventNameLength)
-        self.eventName = Array(bytes[6..<index])
-        self.textLength = bytes[index]
-        index += 1
-        self.text = Array(bytes[index..<index+numericCast(textLength)])
-    }
-}
-extension EventDescriptor : CustomStringConvertible {
-    public var description: String {
-        return "EventDescriptor(descriptorTag: \(String(format: "0x%02x", descriptorTag))"
-            + ", descriptorLength: \(String(format: "0x%02x", descriptorLength))"
-            + ", languageCode: \(String(format: "0x%06x", languageCode))"
-            + ", eventNameLength: \(String(format: "0x%02x", eventNameLength))(\(eventStr))"
-            + ", textLength: \(String(format: "0x%02x", textLength))(\(textStr))"
-            + ")"
-    }
-    public var eventStr: String {
-        return ARIB8charDecode(eventName).str
-    }
-    public var textStr: String {
-        return ARIB8charDecode(text).str
+    var shortDescriptor: ShortEventDescriptor? {
+        guard let descriptor = descriptors.first(where: {$0.descriptorTag == 0x4D}) else {
+            return nil
+        }
+        return descriptor as? ShortEventDescriptor
     }
 }

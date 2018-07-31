@@ -217,8 +217,12 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
             return []
         }
         let event = eit.events.first!
+        // 番組表(0x4E)記述子を取得
+        guard let shortDescriptor = event.shortDescriptor else {
+            return []
+        }
         // S1のガイド用番組を除外
-        if blackList.contains(event.descriptor.textStr) {
+        if blackList.contains(shortDescriptor.textStr) {
             return []
         }
         // ToDo: スクランブル時の処理
