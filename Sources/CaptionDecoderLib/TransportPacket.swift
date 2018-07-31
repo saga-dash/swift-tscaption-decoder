@@ -44,7 +44,7 @@ extension TransportPacket {
         return adaptationFlag == 1 ? AdaptationField(data) : nil
     }
     var noPointerField: Bool {
-        return adaptationField==nil && isPes
+        return adaptationField==nil && (isPes || payloadUnitStartIndicator != 0x01)
     }
     public var payload: [UInt8] {
         let bytes = [UInt8](data)
