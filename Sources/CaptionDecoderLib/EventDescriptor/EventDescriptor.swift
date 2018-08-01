@@ -85,7 +85,7 @@ func convertEventDescriptor(_ bytes: [UInt8]) -> EventDescriptor? {
     case 0x53:
         return UnhandledDescriptor(bytes, "CAIdentifier") // 図 6.2-18 CA識別記述子のデータ構造
     case 0x54:
-        return UnhandledDescriptor(bytes, "Content") // 図 6.2-19 コンテント記述子のデータ構造
+        return ContentDescriptor(bytes) // 図 6.2-19 コンテント記述子のデータ構造
     case 0x55:
         return UnhandledDescriptor(bytes, "ParentalRating") // 図 6.2-20 パレンタルレート記述子のデータ構造
     case 0xFD:
