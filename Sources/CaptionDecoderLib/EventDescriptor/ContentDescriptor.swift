@@ -103,27 +103,27 @@ extension ContentDescriptorSub {
         case 0x00:
             switch contentNibbleLevel2 {
             case 0x00:
-                return ""
+                return "定時・総合"
             case 0x01:
-                return ""
+                return "天気"
             case 0x02:
-                return ""
+                return "特集・ドキュメント"
             case 0x03:
-                return ""
+                return "政治・国会"
             case 0x04:
-                return ""
+                return "経済・市況"
             case 0x05:
-                return ""
+                return "海外・国際"
             case 0x06:
-                return ""
+                return "解説"
             case 0x07:
-                return ""
+                return "討論・会談"
             case 0x08:
-                return ""
+                return "報道特番"
             case 0x09:
-                return ""
+                return "ローカル・地域"
             case 0x0A:
-                return ""
+                return "交通"
             case 0x0B:
                 return ""
             case 0x0C:
@@ -133,7 +133,7 @@ extension ContentDescriptorSub {
             case 0x0E:
                 return ""
             case 0x0F:
-                return ""
+                return "その他"
             default:
                 break
             }
@@ -141,27 +141,27 @@ extension ContentDescriptorSub {
         case 0x01:
             switch contentNibbleLevel2 {
             case 0x00:
-                return ""
+                return "スポーツニュース"
             case 0x01:
-                return ""
+                return "野球"
             case 0x02:
-                return ""
+                return "サッカー"
             case 0x03:
-                return ""
+                return "ゴルフ"
             case 0x04:
-                return ""
+                return "その他の球技"
             case 0x05:
-                return ""
+                return "相撲・格闘技"
             case 0x06:
-                return ""
+                return "オリンピック・国際大会"
             case 0x07:
-                return ""
+                return "マラソン・陸上・水泳"
             case 0x08:
-                return ""
+                return "モータースポーツ"
             case 0x09:
-                return ""
+                return "マリン・ウィンタースポーツ"
             case 0x0A:
-                return ""
+                return "競馬・公営競技"
             case 0x0B:
                 return ""
             case 0x0C:
@@ -171,7 +171,7 @@ extension ContentDescriptorSub {
             case 0x0E:
                 return ""
             case 0x0F:
-                return ""
+                return "その他"
             default:
                 break
             }
@@ -179,21 +179,21 @@ extension ContentDescriptorSub {
         case 0x02:
             switch contentNibbleLevel2 {
             case 0x00:
-                return ""
+                return "芸能・ワイドショー"
             case 0x01:
-                return ""
+                return "ファッション"
             case 0x02:
-                return ""
+                return "暮らし・住まい"
             case 0x03:
-                return ""
+                return "健康・医療"
             case 0x04:
-                return ""
+                return "ショッピング・通販"
             case 0x05:
-                return ""
+                return "グルメ・料理"
             case 0x06:
-                return ""
+                return "イベント"
             case 0x07:
-                return ""
+                return "番組紹介・お知らせ"
             case 0x08:
                 return ""
             case 0x09:
@@ -209,7 +209,7 @@ extension ContentDescriptorSub {
             case 0x0E:
                 return ""
             case 0x0F:
-                return ""
+                return "その他"
             default:
                 break
             }
@@ -217,11 +217,11 @@ extension ContentDescriptorSub {
         case 0x03:
             switch contentNibbleLevel2 {
             case 0x00:
-                return ""
+                return "国内ドラマ"
             case 0x01:
-                return ""
+                return "海外ドラマ"
             case 0x02:
-                return ""
+                return "時代劇"
             case 0x03:
                 return ""
             case 0x04:
@@ -247,7 +247,7 @@ extension ContentDescriptorSub {
             case 0x0E:
                 return ""
             case 0x0F:
-                return ""
+                return "その他"
             default:
                 break
             }
@@ -255,27 +255,27 @@ extension ContentDescriptorSub {
         case 0x04:
             switch contentNibbleLevel2 {
             case 0x00:
-                return ""
+                return "国内ロック・ポップス"
             case 0x01:
-                return ""
+                return "海外ロック・ポップス"
             case 0x02:
-                return ""
+                return "クラシック・オペラ"
             case 0x03:
-                return ""
+                return "ジャズ・フュージョン"
             case 0x04:
-                return ""
+                return "歌謡曲・演歌"
             case 0x05:
-                return ""
+                return "ライブ・コンサート"
             case 0x06:
-                return ""
+                return "ランキング・リクエスト"
             case 0x07:
-                return ""
+                return "カラオケ・のど自慢"
             case 0x08:
-                return ""
+                return "民謡・邦楽"
             case 0x09:
-                return ""
+                return "童謡・キッズ"
             case 0x0A:
-                return ""
+                return "民族音楽・ワールドミュージック"
             case 0x0B:
                 return ""
             case 0x0C:
@@ -285,7 +285,7 @@ extension ContentDescriptorSub {
             case 0x0E:
                 return ""
             case 0x0F:
-                return ""
+                return "その他"
             default:
                 break
             }
@@ -293,19 +293,19 @@ extension ContentDescriptorSub {
         case 0x05:
             switch contentNibbleLevel2 {
             case 0x00:
-                return ""
+                return "クイズ"
             case 0x01:
-                return ""
+                return "ゲーム"
             case 0x02:
-                return ""
+                return "トークバラエティ"
             case 0x03:
-                return ""
+                return "お笑い・コメディ"
             case 0x04:
-                return ""
+                return "音楽バラエティ"
             case 0x05:
-                return ""
+                return "旅バラエティ"
             case 0x06:
-                return ""
+                return "料理バラエティ"
             case 0x07:
                 return ""
             case 0x08:
@@ -323,7 +323,7 @@ extension ContentDescriptorSub {
             case 0x0E:
                 return ""
             case 0x0F:
-                return ""
+                return "その他"
             default:
                 break
             }
@@ -331,11 +331,11 @@ extension ContentDescriptorSub {
         case 0x06:
             switch contentNibbleLevel2 {
             case 0x00:
-                return ""
+                return "洋画"
             case 0x01:
-                return ""
+                return "邦画"
             case 0x02:
-                return ""
+                return "アニメ"
             case 0x03:
                 return ""
             case 0x04:
@@ -361,7 +361,7 @@ extension ContentDescriptorSub {
             case 0x0E:
                 return ""
             case 0x0F:
-                return ""
+                return "その他"
             default:
                 break
             }
@@ -369,11 +369,11 @@ extension ContentDescriptorSub {
         case 0x07:
             switch contentNibbleLevel2 {
             case 0x00:
-                return ""
+                return "国内アニメ"
             case 0x01:
-                return ""
+                return "海外アニメ"
             case 0x02:
-                return ""
+                return "特撮"
             case 0x03:
                 return ""
             case 0x04:
@@ -399,7 +399,7 @@ extension ContentDescriptorSub {
             case 0x0E:
                 return ""
             case 0x0F:
-                return ""
+                return "その他"
             default:
                 break
             }
@@ -407,23 +407,23 @@ extension ContentDescriptorSub {
         case 0x08:
             switch contentNibbleLevel2 {
             case 0x00:
-                return ""
+                return "社会・時事"
             case 0x01:
-                return ""
+                return "歴史・紀行"
             case 0x02:
-                return ""
+                return "自然・動物・環境"
             case 0x03:
-                return ""
+                return "宇宙・科学・医学"
             case 0x04:
-                return ""
+                return "カルチャー・伝統文化"
             case 0x05:
-                return ""
+                return "文学・文芸"
             case 0x06:
-                return ""
+                return "スポーツ"
             case 0x07:
-                return ""
+                return "ドキュメンタリー全般"
             case 0x08:
-                return ""
+                return "インタビュー・討論"
             case 0x09:
                 return ""
             case 0x0A:
@@ -437,7 +437,7 @@ extension ContentDescriptorSub {
             case 0x0E:
                 return ""
             case 0x0F:
-                return ""
+                return "その他"
             default:
                 break
             }
@@ -445,15 +445,15 @@ extension ContentDescriptorSub {
         case 0x09:
             switch contentNibbleLevel2 {
             case 0x00:
-                return ""
+                return "現代劇・新劇"
             case 0x01:
-                return ""
+                return "ミュージカル"
             case 0x02:
-                return ""
+                return "ダンス・バレエ"
             case 0x03:
-                return ""
+                return "落語・演芸"
             case 0x04:
-                return ""
+                return "歌舞伎・古典"
             case 0x05:
                 return ""
             case 0x06:
@@ -475,7 +475,7 @@ extension ContentDescriptorSub {
             case 0x0E:
                 return ""
             case 0x0F:
-                return ""
+                return "その他"
             default:
                 break
             }
@@ -483,37 +483,37 @@ extension ContentDescriptorSub {
         case 0x0A:
             switch contentNibbleLevel2 {
             case 0x00:
-                return ""
+                return "旅・釣り・アウトドア"
             case 0x01:
-                return ""
+                return "園芸・ペット・手芸"
             case 0x02:
-                return ""
+                return "音楽・美術・工芸"
             case 0x03:
-                return ""
+                return "囲碁・将棋"
             case 0x04:
-                return ""
+                return "麻雀・パチンコ"
             case 0x05:
-                return ""
+                return "車・オートバイ"
             case 0x06:
-                return ""
+                return "コンピュータ・TVゲーム"
             case 0x07:
-                return ""
+                return "会話・語学"
             case 0x08:
-                return ""
+                return "幼児・小学生"
             case 0x09:
-                return ""
+                return "中学生・高校生"
             case 0x0A:
-                return ""
+                return "大学生・受験"
             case 0x0B:
-                return ""
+                return "生涯教育・資格"
             case 0x0C:
-                return ""
+                return "教育問題"
             case 0x0D:
                 return ""
             case 0x0E:
                 return ""
             case 0x0F:
-                return ""
+                return "その他"
             default:
                 break
             }
@@ -521,19 +521,19 @@ extension ContentDescriptorSub {
         case 0x0B:
             switch contentNibbleLevel2 {
             case 0x00:
-                return ""
+                return "高齢者"
             case 0x01:
-                return ""
+                return "障害者"
             case 0x02:
-                return ""
+                return "社会福祉"
             case 0x03:
-                return ""
+                return "ボランティア"
             case 0x04:
-                return ""
+                return "手話"
             case 0x05:
-                return ""
+                return "文字(字幕)"
             case 0x06:
-                return ""
+                return "音声解説"
             case 0x07:
                 return ""
             case 0x08:
@@ -551,7 +551,7 @@ extension ContentDescriptorSub {
             case 0x0E:
                 return ""
             case 0x0F:
-                return ""
+                return "その他"
             default:
                 break
             }
@@ -597,15 +597,15 @@ extension ContentDescriptorSub {
         case 0x0E:
             switch contentNibbleLevel2 {
             case 0x00:
-                return ""
+                return "BS/地上デジタル放送用番組付属情報"
             case 0x01:
-                return ""
+                return "広帯域 CS デジタル放送用拡張"
             case 0x02:
                 return ""
             case 0x03:
-                return ""
+                return "サーバー型番組付属情報"
             case 0x04:
-                return ""
+                return "IP 放送用番組付属情報"
             case 0x05:
                 return ""
             case 0x06:
@@ -627,7 +627,7 @@ extension ContentDescriptorSub {
             case 0x0E:
                 return ""
             case 0x0F:
-                return ""
+                return "その他"
             default:
                 break
             }
@@ -665,7 +665,7 @@ extension ContentDescriptorSub {
             case 0x0E:
                 return ""
             case 0x0F:
-                return ""
+                return "その他"
             default:
                 break
             }
