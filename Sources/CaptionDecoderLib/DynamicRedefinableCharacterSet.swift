@@ -90,7 +90,7 @@ struct Font {
             self.regionY = bytes[2]
             self.geometricDataLength = UInt16(bytes[3])<<8 | UInt16(bytes[4])
             // ToDo: 定義探す
-            self.payload = Array(bytes[5..<5+numericCast(Int(regionX!) * Int(regionY!) * Int(geometricDataLength!))/8])
+            self.payload = Array(bytes[0..<5+numericCast(Int(regionX!) * Int(regionY!) * Int(geometricDataLength!))/8])
         } else {
             self.depth = bytes[1]
             self.width = bytes[2]
@@ -99,18 +99,13 @@ struct Font {
             self.regionY = nil
             self.geometricDataLength = nil
             // depth+2: 色の深度、 (depth+2)/2: 使用するbit数
-            self.payload = Array(bytes[4..<4+numericCast(Int(depth!+2)/2 * Int(width!) * Int(height!))/8])
+            self.payload = Array(bytes[0..<4+numericCast(Int(depth!+2)/2 * Int(width!) * Int(height!))/8])
         }
     }
 }
 extension Font {
     var length: Int {
-        // 1 byte(fontId+mode)
-        if isCompression {
-            return Int(1 + 1 + 1 + 2 + self.payload.count)
-        } else {
-            return Int(1 + 1 + 1 + 1 + self.payload.count)
-        }
+        return self.payload.count
     }
     var isCompression: Bool {
         return mode != 0x0 && mode != 0x1
