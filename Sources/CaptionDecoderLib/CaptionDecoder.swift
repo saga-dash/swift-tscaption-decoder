@@ -17,6 +17,11 @@ var stock: Dictionary<UInt16, Data> = [:]
 var presentEventId: UInt16? = nil
 var presentServiceId: String? = nil
 var tsDate: Date = Date()
+var blackList: [String] = [
+    "お住まいの地域の詳しい気象情報、全国の天気ほか",
+    "デジタル放送のコピー制御（著作権保護）システムとＢ－ＣＡＳカードなどについての説明と問い合わせなど",
+    "いつでも見ることができるＮＨＫの最新のニュース",
+]
 
 public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
     if data.count != LENGTH {
@@ -175,28 +180,26 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         if (header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil) {
             return []
         }
-        // g1,e1で不正データが入ってくる。
-        if !header.valid {
-            return []
-        }
         let newData: Data
         // 前のデータと結合
         if (stock[header.PID] != nil) {
             // ストックが存在し先頭TSならデータがおかしいので置き換える
             if header.payloadUnitStartIndicator == 0x01 {
-                if header.payload[0] != 0x004E {
-                    // tableId: payload[0] == 0x004E == P/F
+                return []
+            } else {
+                if isCorrectCounter(stock[header.PID]!, data) {
+                    newData = stock[header.PID]! + header.payload
+                } else {
+                    stock.removeValue(forKey: header.PID)
                     return []
                 }
-                //stock.removeValue(forKey: header.PID)
-                stock[header.PID] = data
-                newData = data
-            } else {
-                newData = stock[header.PID]! + data.suffix(from: 4) // header 4byte
             }
         } else {
             if header.payload[0] != 0x004E {
                 // tableId: payload[0] == 0x004E == P/F
+                return []
+            }
+            if header.payloadUnitStartIndicator != 0x01 {
                 return []
             }
             newData = data
@@ -209,8 +212,17 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         defer {
             stock.removeValue(forKey: header.PID)
         }
-        // present(実行中？): 0x02, 0x04
-        guard let event = eit.events.first else {//(where: {$0.runningStatus == 0x04 || $0.runningStatus == 0x02}) else {
+        // present(実行中)
+        if !eit.isPresent {
+            return []
+        }
+        let event = eit.events.first!
+        // 番組表(0x4E)記述子を取得
+        guard let shortDescriptor = event.shortDescriptor else {
+            return []
+        }
+        // S1のガイド用番組を除外
+        if blackList.contains(shortDescriptor.textStr) {
             return []
         }
         // ToDo: スクランブル時の処理
@@ -218,14 +230,15 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         //printHexDumpForBytes(newData)
         //print(eit)
         //print(event)
-        if !event.isOnAir(tsDate) {
-            print(event)
-            return []
-        }
         presentEventId = event.eventId
         presentServiceId = eit.serviceName
     }
     return []
+}
+func isCorrectCounter(_ src: Data, _ target: Data) -> Bool {
+    let srcCounter = Int([UInt8](src)[3]&0x0F)
+    let targetCounter = Int([UInt8](target)[3]&0x0F)
+    return (srcCounter + src.count/(LENGTH-4)) % 16 == targetCounter
 }
 
 public struct Options {

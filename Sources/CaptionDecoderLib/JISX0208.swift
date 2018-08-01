@@ -680,6 +680,84 @@ func jisToUtf16(_ c1: UInt8, _ c2: UInt8) -> String
     if c2 < 0x21 || c2 > 0x7e {
         return "?"
     }
+    if c1-0x20 == 90 {
+        switch (c2-0x20) {
+        case 48:
+            return "【HV】"
+        case 49:
+            return "【SD】"
+        case 50:
+            return "【P】"
+        case 51:
+            return "【W】"
+        case 52:
+            return "【MV】"
+        case 53:
+            return "【手】"
+        case 54:
+            return "【字】"
+        case 55:
+            return "【双】"
+        case 56:
+            return "【デ】"
+        case 57:
+            return "【S】"
+        case 58:
+            return "【二】"
+        case 59:
+            return "【多】"
+        case 60:
+            return "【解】"
+        case 61:
+            return "【SS】"
+        case 62:
+            return "【B】"
+        case 63:
+            return "【N】"
+        case 64:
+            return "■"
+        case 65:
+            return "●"
+        case 66:
+            return "【天】"
+        case 67:
+            return "【交】"
+        case 68:
+            return "【映】"
+        case 69:
+            return "【無】"
+        case 70:
+            return "【料】"
+        case 72:
+            return "【前】"
+        case 73:
+            return "【後】"
+        case 74:
+            return "【再】"
+        case 75:
+            return "【新】"
+        case 76:
+            return "【初】"
+        case 77:
+            return "【終】"
+        case 78:
+            return "【生】"
+        case 79:
+            return "【販】"
+        case 80:
+            return "【声】"
+        case 81:
+            return "【吹】"
+        case 82:
+            return "【PPV】"
+        case 83:
+            return "㊙"
+        case 84:
+            return "ほか"
+        default:
+            break
+        }
+    }
     
     let w = _jis2utf16[Int(c1-0x21) * 94 + Int(c2-0x21)];
     if w == 0 {

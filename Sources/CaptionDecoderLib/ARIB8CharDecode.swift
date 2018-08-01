@@ -35,6 +35,15 @@ public func ARIB8charDecode(_ dataUnit: DataUnit) -> Unit {
     GR = UnsafeMutablePointer(&G2)
     return Analyze(dataUnit.payload)
 }
+public func ARIB8charDecode(_ bytes: [UInt8]) -> Unit {
+    G0 = MFMode(charSet: .GSet, charTable: CharTableGset.KANJI.rawValue, byte: 2)!
+    G1 = MFMode(charSet: .GSet, charTable: CharTableGset.ASCII.rawValue, byte: 1)!
+    G2 = MFMode(charSet: .GSet, charTable: CharTableGset.HIRA.rawValue, byte: 1)!
+    G3 = MFMode(charSet: .GSet, charTable: CharTableGset.KANA.rawValue, byte: 1)!
+    GL = UnsafeMutablePointer(&G0)
+    GR = UnsafeMutablePointer(&G2)
+    return Analyze(bytes)
+}
 func Analyze(_ bytes: [UInt8]) -> Unit {
     var index = 0
     var str = ""
@@ -209,6 +218,11 @@ func getChar(_ bytes: [UInt8], index: inout Int, GL: UnsafeMutablePointer<MFMode
 }
 func getChar(_ bytes: [UInt8], index: inout Int, mode: MFMode, code: ControlCode = .CHAR) -> Control {
     //print("\(String(format: "%02x", bytes[index]))", mode)
+    if index + numericCast(mode.byte) > bytes.count {
+        let control = Control(code, command: "$$$$", payload: [bytes[index]])
+        index += 1
+        return control
+    }
     if mode.charSet == .GSet {
         guard let charTable = CharTableGset(rawValue: mode.charTable) else {
             fatalError("未定義のテーブル: \(String(format: "%02x", mode.charTable))")
