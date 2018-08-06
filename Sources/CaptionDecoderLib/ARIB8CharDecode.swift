@@ -57,7 +57,7 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
             }
             let control = getChar(bytes, index: &index, GL: GL, GR: GR)
             controls.append(control)
-            str += control.command
+            str += control.str ?? ""
             continue
         }
         index += 1 // 制御コード分
@@ -92,7 +92,7 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
         case .SS2:
             let control = getChar(bytes, index: &index, mode: G2, code: .SS2)
             controls.append(control)
-            str += control.command
+            str += control.str ?? ""
         case .ESC:
             let control = ESC(bytes, index: &index)
             controls.append(control)
@@ -102,7 +102,7 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
         case .SS3:
             let control = getChar(bytes, index: &index, mode: G3, code: .SS3)
             controls.append(control)
-            str += control.command
+            str += control.str ?? ""
         case .RS:
             controls.append(Control(code))
         case .US:
@@ -219,7 +219,7 @@ func getChar(_ bytes: [UInt8], index: inout Int, GL: UnsafeMutablePointer<MFMode
 func getChar(_ bytes: [UInt8], index: inout Int, mode: MFMode, code: ControlCode = .CHAR) -> Control {
     //print("\(String(format: "%02x", bytes[index]))", mode)
     if index + numericCast(mode.byte) > bytes.count {
-        let control = Control(code, command: "$$$$", payload: [bytes[index]])
+        let control = Control(code, str: "$$$$", payload: [bytes[index]])
         index += 1
         return control
     }
@@ -230,28 +230,28 @@ func getChar(_ bytes: [UInt8], index: inout Int, mode: MFMode, code: ControlCode
         switch charTable {
         case .ASCII, .PROP_ASCII:
             let str = AsciiTable[Int(bytes[index]&0x7F-0x21)]
-            let control = Control(code, command: str, payload: [bytes[index]])
+            let control = Control(code, str: str, payload: [bytes[index]])
             index += Int(mode.byte)
             return control
         case .HIRA, .PROP_HIRA:
             let str = HiraTable[Int(bytes[index]&0x7F-0x21)]
-            let control = Control(code, command: str, payload: [bytes[index]])
+            let control = Control(code, str: str, payload: [bytes[index]])
             index += Int(mode.byte)
             return control
         case .KANA, .JISX_KANA, .PROP_KANA:
             let str = KanaTable[Int(bytes[index]&0x7F-0x21)]
-            let control = Control(code, command: str, payload: [bytes[index]])
+            let control = Control(code, str: str, payload: [bytes[index]])
             index += Int(mode.byte)
             return control
         case .KANJI, .JIS_KANJI1, .JIS_KANJI2, .KIGOU:
             let str = jisToUtf16(bytes[index]&0x7F, bytes[index+1]&0x7F)
-            let control = Control(code, command: str, payload: [bytes[index], bytes[index+1]])
+            let control = Control(code, str: str, payload: [bytes[index], bytes[index+1]])
             index += Int(mode.byte)
             return control
         case .MOSAIC_A, .MOSAIC_B, .MOSAIC_C, .MOSAIC_D:
             // ToDo
             let str = "%%%%"
-            let control = Control(code, command: str, payload: [bytes[index]])
+            let control = Control(code, str: str, payload: [bytes[index]])
             index += Int(mode.byte)
             return control
         default:
@@ -266,19 +266,19 @@ func getChar(_ bytes: [UInt8], index: inout Int, mode: MFMode, code: ControlCode
             // 2byte DRCS
             // ToDo
             let str = "####"
-            let control = Control(code, command: str, payload: [bytes[index], bytes[index+1]])
+            let control = Control(code, str: str, payload: [bytes[index], bytes[index+1]])
             index += Int(mode.byte)
             return control
         case .DRCS_1, .DRCS_2, .DRCS_3, .DRCS_4, .DRCS_5, .DRCS_6, .DRCS_7, .DRCS_8, .DRCS_9, .DRCS_10, .DRCS_11, .DRCS_12, .DRCS_13, .DRCS_14, .DRCS_15:
             // 1byte DRCS
             // ToDo
             let str = "####"
-            let control = Control(code, command: str, payload: [bytes[index]])
+            let control = Control(code, str: str, payload: [bytes[index]])
             index += Int(mode.byte)
             return control
         case .MACRO:
             _ = Analyze(DefaultMacro[Int(bytes[index]&0x0F)])
-            let control = Control(code, command: "", payload: [bytes[index]])
+            let control = Control(code, str: "", payload: [bytes[index]])
             index += Int(mode.byte)
             return control
         default:

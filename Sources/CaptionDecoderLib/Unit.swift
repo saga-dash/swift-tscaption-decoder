@@ -23,10 +23,12 @@ public struct Unit: Codable {
 public struct Control: Codable {
     public let command: String
     public let code: ControlCode
+    public let str: String?
     public let payload: [UInt8]
-    public init(_ code: ControlCode, command: String? = nil, payload: [UInt8] = []) {
+    public init(_ code: ControlCode, command: String? = nil, str: String? = nil, payload: [UInt8] = []) {
         self.command = command ?? "\(code)"
         self.code = code
+        self.str = str
         self.payload = payload
     }
 }
@@ -34,6 +36,7 @@ extension Control : CustomStringConvertible {
     public var description: String {
         return "Control(command: \(command)"
             + ", code: \(code)"
+            + ", str: \(str ?? "")"
             + ", payload: \(payload.map({String(format: "0x%02x", $0)}).joined(separator: ","))"
             + ")"
     }
