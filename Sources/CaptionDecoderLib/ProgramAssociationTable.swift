@@ -17,6 +17,10 @@ public struct ProgramAssociationTable {
     public init?(_ data: Data, _ _header: TransportPacket? = nil) {
         self.header = _header ?? TransportPacket(data)
         self.programAssociationSection = ProgramAssociationSection(data, header)
+        // 1 byte(ProgramAssociationSection終わりまで)
+        if programAssociationSection.sectionLength - 1 > programAssociationSection.payload.count {
+            return nil
+        }
         var bytes = programAssociationSection.payload
         let payloadLength = programAssociationSection.sectionLength
             - 5 // PAT(sessionLength以下の固定分)
@@ -26,12 +30,16 @@ public struct ProgramAssociationTable {
         repeat {
             array.append(Program(bytes))
             let sub = 4 // 4byte(Program)
+            if programLength < sub {
+                // 不正なprogramLength
+                bytes = Array(bytes.suffix(bytes.count - numericCast(programLength)))
+                break
+            }
             bytes = Array(bytes.suffix(bytes.count - sub))
             programLength -= numericCast(sub)
         } while programLength > 0
         self.programs = array
         self.CRC_32 = UInt32(bytes[0])<<24 | UInt32(bytes[1])<<16 | UInt32(bytes[2])<<8 | UInt32(bytes[3])
-        assert(programAssociationSection.sectionLength < LENGTH - numericCast(payloadLength), "ToDo: PATが188Byteを超えた場合の対処")
     }
 }
 extension ProgramAssociationTable : CustomStringConvertible {

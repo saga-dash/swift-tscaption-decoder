@@ -128,8 +128,11 @@ public struct Event {
             guard let descriptor = convertEventDescriptor(bytes) else {
                 break
             }
-            array.append(descriptor)
             let sub = descriptor.length // 可変長(EventDescriptor)
+            if sub > bytes.count {
+                break
+            }
+            array.append(descriptor)
             bytes = Array(bytes.suffix(bytes.count - sub))
             payloadLength -= numericCast(sub)
         } while payloadLength > 4 // 4 byte(CRC)

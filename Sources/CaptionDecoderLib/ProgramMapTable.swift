@@ -22,6 +22,9 @@ public struct ProgramMapTable {
     public init?(_ data: Data, _ _header: TransportPacket? = nil) {
         self.header = _header ?? TransportPacket(data)
         self.programAssociationSection = ProgramAssociationSection(data, header)
+        if programAssociationSection.sectionLength - 1 > programAssociationSection.payload.count {
+            return nil
+        }
         var bytes = programAssociationSection.payload
         self.PCR_PID = UInt16(bytes[0]&0x1F)<<8 | UInt16(bytes[1])
         // -- Descriptor
@@ -32,8 +35,13 @@ public struct ProgramMapTable {
         var descriptorArray: [Descriptor] = []
         repeat {
             let descriptor = Descriptor(bytes)
-            descriptorArray.append(descriptor)
             let sub = 2+Int(descriptor.descriptorLength) // 2byte+可変長(Descriptor)
+            if descriptorLength < sub {
+                // 不正なdescriptorLegth
+                bytes = Array(bytes.suffix(bytes.count - numericCast(descriptorLength)))
+                break
+            }
+            descriptorArray.append(descriptor)
             bytes = Array(bytes.suffix(bytes.count - sub))
             descriptorLength -= numericCast(sub)
         } while descriptorLength > 0
@@ -54,8 +62,13 @@ public struct ProgramMapTable {
         var array: [Stream] = []
         repeat {
             let stream = Stream(bytes)
-            array.append(stream)
             let sub = 5+Int(stream.esInfoLength) // 5byte+可変長(Stream)
+            if streamLength < sub {
+                // 不正なstreamLength
+                bytes = Array(bytes.suffix(bytes.count - numericCast(streamLength)))
+                break
+            }
+            array.append(stream)
             bytes = Array(bytes.suffix(bytes.count - sub))
             streamLength -= numericCast(sub)
         } while streamLength > 0
@@ -66,6 +79,7 @@ public struct ProgramMapTable {
 extension ProgramMapTable : CustomStringConvertible {
     public var description: String {
         return "PMT(PCR_PID: \(String(format: "0x%04x", PCR_PID))"
+            + ", programInfoLength: \(String(format: "0x%04x", programInfoLength))"
             + ", descriptor: \(descriptor)"
             + ", stream: \(stream)"
             + ", CRC_32: \(String(format: "0x%08x", CRC_32))"
@@ -111,8 +125,13 @@ public struct Stream {
         var array: [StreamDescriptor] = []
         repeat {
             let descriptor = StreamDescriptor(bytes)
-            array.append(descriptor)
             let sub = 2+Int(descriptor.descriptorLength) // 2byte+可変長(StreamDescriptor)
+            if esInfoLengthConst < sub {
+                // 不正なesInfoLengthConst
+                bytes = Array(bytes.suffix(bytes.count - numericCast(esInfoLengthConst)))
+                break
+            }
+            array.append(descriptor)
             bytes = Array(bytes.suffix(bytes.count - sub))
             esInfoLengthConst -= numericCast(sub)
         } while esInfoLengthConst > 0
