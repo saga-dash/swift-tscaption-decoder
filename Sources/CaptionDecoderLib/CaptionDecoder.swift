@@ -28,12 +28,42 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         return []
     }
     var header = TransportPacket(data)
+    var data = data
+    // はじめのunitではない&&前のデータがない
+    if (header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil) {
+        return []
+    }
+    // 前のデータと結合
+    if (stock[header.PID] != nil) {
+        // ストックが存在し先頭TSならデータがおかしいので置き換える
+        if header.payloadUnitStartIndicator == 0x01 {
+            stock[header.PID] = data
+        } else {
+            // PIDに対してCounterが正常に加算されているか
+            if isCorrectCounter(stock[header.PID]!, data) {
+                data = stock[header.PID]! + header.payload
+            } else {
+                stock.removeValue(forKey: header.PID)
+                return []
+            }
+        }
+    }
+    header = TransportPacket(data)
+    if !header.enoughHeaderLength {
+        // データが足りていなければ、ストックする
+        stock[header.PID] = data
+        return []
+    }
     // TODO Enumにする
     // PAT?
     if header.PID == 0x00 {
         //printHexDumpForBytes(data)
         //print(header)
-        let pat = ProgramAssociationTable(data, header)
+        guard let pat = ProgramAssociationTable(data, header) else {
+            // データが足りていなければ、ストックする
+            stock[header.PID] = data
+            return []
+        }
         //printHexDumpForBytes(bytes: pat.programAssociationSection.hexDump)
         //print(pat.programAssociationSection)
         //print(pat)
@@ -61,33 +91,15 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
     }
     // PMT?
     else if header.PID == targetPMTPID {
-        // はじめのunitではない&&前のデータがない
-        if (header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil) {
-            return []
-        }
-        let newData: Data
-        // 前のデータと結合
-        if (stock[header.PID] != nil) {
-            // ストックが存在し先頭TSならデータがおかしいので置き換える
-            if header.payloadUnitStartIndicator == 0x01 {
-                //stock.removeValue(forKey: header.PID)
-                stock[header.PID] = data
-                newData = data
-            } else {
-                newData = stock[header.PID]! + data.suffix(from: 4) // header 4byte
-            }
-        } else {
-            newData = data
-        }
-        guard let pmt = ProgramMapTable(newData) else {
+        guard let pmt = ProgramMapTable(data) else {
             // データが足りていなければ、ストックする
-            stock[header.PID] = newData
+            stock[header.PID] = data
             return []
         }
         defer {
             stock.removeValue(forKey: header.PID)
         }
-        //printHexDumpForBytes(newData)
+        //printHexDumpForBytes(data)
         //print(pmt)
         let streams = pmt.stream.filter({$0.streamType==PES_PRIVATE_DATA})
         if streams.count == 0 {
@@ -107,29 +119,9 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         return []
     }
     else if header.PID == targetCaptionPID {
-        // はじめのunitではない&&前のデータがない
-        if header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil {
-            return []
-        }
-        header = TransportPacket(data, isPes: true)
-        //print(header)
-        let newData: Data
-        // 前のデータと結合
-        if (stock[header.PID] != nil) {
-            // ストックが存在し先頭TSならデータがおかしいので置き換える
-            if header.payloadUnitStartIndicator == 0x01 {
-                //stock.removeValue(forKey: header.PID)
-                stock[header.PID] = data
-                newData = data
-            } else {
-                newData = stock[header.PID]! + header.payload
-            }
-        } else {
-            newData = data
-        }
-        //printHexDumpForBytes(newData)
-        guard let caption = Caption(newData) else {
-            stock[header.PID] = newData
+        //printHexDumpForBytes(data)
+        guard let caption = Caption(data) else {
+            stock[header.PID] = data
             return []
         }
         defer {
@@ -153,7 +145,7 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
                 result.serviceId = presentServiceId
                 return result
             case 0x30, 0x31:
-                //print(newData.map({String(format: "0x%02x", $0)}).joined(separator: ", "))
+                //print(data.map({String(format: "0x%02x", $0)}).joined(separator: ", "))
                 let drcs = DRCS(dataUnit.payload)
                 //print(drcs)
                 var controls: [Control] = []
@@ -173,40 +165,20 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
             }
         }).filter({$0 != nil}) as! [Unit]
         return result
-    } else if header.PID == 0x0012 {// || header.PID == 0x0026 || header.PID == 0x0027 {
-        // EIT
+    }
+    // EIT
+    else if header.PID == 0x0012 {// || header.PID == 0x0026 || header.PID == 0x0027 {
         // 固定用: 0x0012, ワンセグ受信用: 0x0027
-        // はじめのunitではない&&前のデータがない
-        if (header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil) {
+        if header.payload[0] != 0x004E {
+            // tableId: payload[0] == 0x004E == P/F
             return []
         }
-        let newData: Data
-        // 前のデータと結合
-        if (stock[header.PID] != nil) {
-            // ストックが存在し先頭TSならデータがおかしいので置き換える
-            if header.payloadUnitStartIndicator == 0x01 {
-                return []
-            } else {
-                if isCorrectCounter(stock[header.PID]!, data) {
-                    newData = stock[header.PID]! + header.payload
-                } else {
-                    stock.removeValue(forKey: header.PID)
-                    return []
-                }
-            }
-        } else {
-            if header.payload[0] != 0x004E {
-                // tableId: payload[0] == 0x004E == P/F
-                return []
-            }
-            if header.payloadUnitStartIndicator != 0x01 {
-                return []
-            }
-            newData = data
+        if header.payloadUnitStartIndicator != 0x01 {
+            return []
         }
-        guard let eit = EventInformationTable(newData) else {
+        guard let eit = EventInformationTable(data) else {
             // データが足りていなければ、ストックする
-            stock[header.PID] = newData
+            stock[header.PID] = data
             return []
         }
         defer {
@@ -227,7 +199,7 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         }
         // ToDo: スクランブル時の処理
         //print(eit.header)
-        //printHexDumpForBytes(newData)
+        //printHexDumpForBytes(data)
         //print(eit)
         //print(event)
         presentEventId = event.eventId

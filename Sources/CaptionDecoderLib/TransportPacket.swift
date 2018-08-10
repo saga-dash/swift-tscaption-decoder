@@ -9,7 +9,7 @@
 import Foundation
 
 public struct TransportPacket {
-    let data: Data
+    public let data: Data
     public let syncByte: UInt8                      //  8  bslbf
     public let transportErrorIndicator: UInt8       //  1  bslbf
     public let payloadUnitStartIndicator: UInt8     //  1  bslbf
@@ -48,13 +48,21 @@ extension TransportPacket {
     }
     public var payload: [UInt8] {
         let bytes = [UInt8](data)
-        let headerLength = 4 // Header
-            + (adaptationField?.adaptationFieldLength ?? 0) // AdaptationFieldLength
-            + (noPointerField ? 0 : 1) // pointer_field
-        return Array(bytes.suffix(bytes.count - Int(headerLength))) // HeaderLength + Payload = 188
+        return Array(bytes.suffix(bytes.count - self.length)) // HeaderLength + Payload = 188
     }
-    public var valid: Bool {
-        return !(adaptationFlag == 0 && payloadUnitStartIndicator == 0x01 && data[4] != 0x00)
+    public var length: Int {
+        let headerLength = 4 // Header
+            + (numericCast(adaptationField?.adaptationFieldLength ?? 0)) // AdaptationFieldLength
+            + (noPointerField ? 0 : 1) // pointer_field
+        return Int(headerLength)
+    }
+    public var enoughHeaderLength: Bool {
+        if let adaptationField = self.adaptationField {
+            if numericCast(adaptationField.adaptationFieldLength) + 4 > self.data.count {
+                return false
+            }
+        }
+        return true
     }
 }
 public struct AdaptationField {
@@ -81,6 +89,7 @@ extension TransportPacket : CustomStringConvertible {
             + ", transportScramblingControl: \(String(format: "0x%x", transportScramblingControl))"
             + ", (adaptationFlag: \(adaptationFlag)"
             + ", payloadFlag: \(payloadFlag))"
+            + ", length: \(String(format: "0x%02x", length))"
             + ", continuityCounter: \(String(format: "0x%02x", continuityCounter))"
             + ")"
     }
