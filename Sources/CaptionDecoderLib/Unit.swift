@@ -10,10 +10,10 @@ import Foundation
 
 public struct Unit: Codable {
     public let str: String
-    public var eventId: UInt16?
+    public var eventId: String?
     public var serviceId: String?
     public let control: [Control]
-    public init(str: String, control: [Control], eventId: UInt16? = nil, serviceId: String? = nil) {
+    public init(str: String, control: [Control], eventId: String? = nil, serviceId: String? = nil) {
         self.str = str
         self.eventId = eventId
         self.serviceId = serviceId
