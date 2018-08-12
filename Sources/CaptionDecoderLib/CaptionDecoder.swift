@@ -141,7 +141,7 @@ public func CaptionDecoderMain(data: Data, options: Options) throws -> [Unit] {
             case 0x20:
                 //printHexDumpForBytes(bytes: dataUnit.payload)
                 var result = ARIB8charDecode(dataUnit)
-                result.eventId = presentEventId
+                result.eventId = presentEventId != nil ? "\(String(format: "%05d", presentEventId!))" : nil
                 result.serviceId = presentServiceId
                 return result
             case 0x30, 0x31:
@@ -156,7 +156,7 @@ public func CaptionDecoderMain(data: Data, options: Options) throws -> [Unit] {
                     }
                 }
                 var result = Unit(str: "", control: controls)
-                result.eventId = presentEventId
+                result.eventId = presentEventId != nil ? "\(String(format: "%05d", presentEventId!))" : nil
                 result.serviceId = presentServiceId
                 return result
             default:
