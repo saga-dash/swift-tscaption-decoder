@@ -36,7 +36,7 @@ public struct EventInformationTable {
         self.originalNetworkId = UInt16(try wrapper.get(num: 2))
         self.segmentLastSectionNumber = try wrapper.get()
         self.lastTableId = try wrapper.get()
-        self.payload = try wrapper.take()
+        self.payload = try wrapper.clone().take()
         if Int(programAssociationSection.sectionLength) - 11 - 4 < 0 {
             return nil
         }
