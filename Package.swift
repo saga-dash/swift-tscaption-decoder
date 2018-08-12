@@ -21,9 +21,15 @@ let package = Package(
             dependencies: ["CaptionDecoderLib", "Commander"]),
         .target(
             name: "CaptionDecoderLib",
+            dependencies: ["ByteArrayWrapper"]),
+        .target(
+            name: "ByteArrayWrapper",
             dependencies: []),
         .testTarget(
             name: "CaptionDecoderTests",
             dependencies: ["CaptionDecoderLib"]),
+        .testTarget(
+            name: "ByteArrayWrapperTests",
+            dependencies: ["ByteArrayWrapper"]),
     ]
 )

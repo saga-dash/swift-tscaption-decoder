@@ -7,9 +7,10 @@
 
 
 import Foundation
+import ByteArrayWrapper
 
 public struct TransportPacket {
-    let data: Data
+    public let data: Data
     public let syncByte: UInt8                      //  8  bslbf
     public let transportErrorIndicator: UInt8       //  1  bslbf
     public let payloadUnitStartIndicator: UInt8     //  1  bslbf
@@ -19,17 +20,18 @@ public struct TransportPacket {
     public let adaptationFieldControl: UInt8        //  2  bslbf
     public let continuityCounter: UInt8             //  4  uimsbf
     let isPes: Bool
-    public init(_ data: Data, isPes: Bool = false) {
+    public init(_ data: Data, isPes: Bool = false) throws {
         self.data = data
         let bytes = [UInt8](data)
-        self.syncByte = bytes[0]
-        self.transportErrorIndicator = (bytes[1]&0x80)>>7
-        self.payloadUnitStartIndicator = (bytes[1]&0x40)>>6
-        self.transportPriority = (bytes[1]&0x20)>>5
-        self.PID = UInt16(bytes[1]&0x1F)<<8 | UInt16(bytes[2])
-        self.transportScramblingControl = (bytes[3]&0xC0)>>6
-        self.adaptationFieldControl = (bytes[3]&0x30)>>4
-        self.continuityCounter = (bytes[3]&0x0F)
+        let wrapper = ByteArray(bytes)
+        self.syncByte = try wrapper.get()
+        self.transportErrorIndicator = (try wrapper.get(doMove: false)&0x80)>>7
+        self.payloadUnitStartIndicator = (try wrapper.get(doMove: false)&0x40)>>6
+        self.transportPriority = (try wrapper.get(doMove: false)&0x20)>>5
+        self.PID = UInt16(try wrapper.get(num: 2)&0x1FFF)
+        self.transportScramblingControl = (try wrapper.get(doMove: false)&0xC0)>>6
+        self.adaptationFieldControl = (try wrapper.get(doMove: false)&0x30)>>4
+        self.continuityCounter = (try wrapper.get()&0x0F)
         self.isPes = isPes
     }
 }
@@ -48,13 +50,21 @@ extension TransportPacket {
     }
     public var payload: [UInt8] {
         let bytes = [UInt8](data)
-        let headerLength = 4 // Header
-            + (adaptationField?.adaptationFieldLength ?? 0) // AdaptationFieldLength
-            + (noPointerField ? 0 : 1) // pointer_field
-        return Array(bytes.suffix(bytes.count - Int(headerLength))) // HeaderLength + Payload = 188
+        return Array(bytes.suffix(bytes.count - self.length)) // HeaderLength + Payload = 188
     }
-    public var valid: Bool {
-        return !(adaptationFlag == 0 && payloadUnitStartIndicator == 0x01 && data[4] != 0x00)
+    public var length: Int {
+        let headerLength = 4 // Header
+            + (numericCast(adaptationField?.adaptationFieldLength ?? 0)) // AdaptationFieldLength
+            + (noPointerField ? 0 : 1) // pointer_field
+        return Int(headerLength)
+    }
+    public var enoughHeaderLength: Bool {
+        if let adaptationField = self.adaptationField {
+            if numericCast(adaptationField.adaptationFieldLength) + 4 > self.data.count {
+                return false
+            }
+        }
+        return true
     }
 }
 public struct AdaptationField {
@@ -81,6 +91,7 @@ extension TransportPacket : CustomStringConvertible {
             + ", transportScramblingControl: \(String(format: "0x%x", transportScramblingControl))"
             + ", (adaptationFlag: \(adaptationFlag)"
             + ", payloadFlag: \(payloadFlag))"
+            + ", length: \(String(format: "0x%02x", length))"
             + ", continuityCounter: \(String(format: "0x%02x", continuityCounter))"
             + ")"
     }

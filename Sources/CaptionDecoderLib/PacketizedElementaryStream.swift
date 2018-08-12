@@ -7,6 +7,7 @@
 
 
 import Foundation
+import ByteArrayWrapper
 
 // PES http://www.nhk.or.jp/strl/publica/bt/en/le0011.pdf
 public struct PacketizedElementaryStream {
@@ -18,24 +19,27 @@ public struct PacketizedElementaryStream {
     //public let pesHeaderLength: UInt8              //  8 bit
     // ToDo: 追加
     public let payload: [UInt8]                    //  n byte
-    public init?(_ data: Data, _ _header: TransportPacket? = nil) {
-        self.header = _header ?? TransportPacket(data, isPes: true)
-        var bytes = header.payload
-        self.packetStartCodePrefix = UInt32(bytes[0])<<16 | UInt32(bytes[1])<<8 | UInt32(bytes[2])
-        self.streamId = bytes[3]
-        self.packetLength = UInt16(bytes[4])<<8 | UInt16(bytes[5])
-        if packetLength > bytes.count - 6 { // 6 byte(packetLengthまで)
+    public init?(_ data: Data, _ _header: TransportPacket? = nil) throws {
+        self.header = try getHeader(data, _header, isPes: true)
+        let bytes = header.payload
+        let wrapper = ByteArray(bytes)
+        self.packetStartCodePrefix = UInt32(try wrapper.get(num: 3))
+        self.streamId = try wrapper.get()
+        self.packetLength = UInt16(try wrapper.get(num: 2))
+        if packetLength > wrapper.count { // 6 byte(packetLengthまで)
             return nil
         }
         // ARIB STD-B24 第三編 第5章 独立 PES 伝送方式
         // ToDo: private_stream_1, private_stream_2についてheaderの言及を探す
         if streamId == 0xBD {
             // private_stream_1
-            let pesHeaderLength = bytes[8]
-            self.payload = Array(bytes.suffix(bytes.count - Int(9+pesHeaderLength))) // 9(pesHeaderLengthまで) + n byte(可変長)
+            try wrapper.skip(2)
+            let pesHeaderLength = Int(try wrapper.get())
+            try wrapper.skip(pesHeaderLength)
+            self.payload = try wrapper.take() // n byte(可変長)
         } else if streamId == 0xBF {
             // private_stream_2
-            self.payload = Array(bytes.suffix(bytes.count - Int(6))) // 6(packetLengthまで)
+            self.payload = try wrapper.take() // n byte(可変長)
         } else {
             self.payload = []
             fatalError("まだだよ。streamId: \(String(format: "0x%02x", streamId))")

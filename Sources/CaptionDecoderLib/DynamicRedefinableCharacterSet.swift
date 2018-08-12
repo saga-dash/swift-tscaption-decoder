@@ -9,19 +9,18 @@
 // http://txqz.net/memo/2012-1118-1434.html
 // ARIB-STD-B24 第一編第2部付録規定D
 import Foundation
+import ByteArrayWrapper
 
 public struct DRCS {
     let numberOfCode: UInt8             //  8 uimsbf
     let codes: [Code]
-    init(_ bytes: [UInt8]) {
-        self.numberOfCode = bytes[0]
-        var bytes = Array(bytes.suffix(bytes.count - 1)) // 1byte(codes前まで)
+    init(_ bytes: [UInt8]) throws {
+        let wrapper = ByteArray(bytes)
+        self.numberOfCode = try wrapper.get()
         var array: [Code] = []
         for _ in 0..<numberOfCode {
-            let code = Code(bytes)
+            let code = try Code(wrapper)
             array.append(code)
-            let sub = code.length // 3byte + 可変長
-            bytes = Array(bytes.suffix(bytes.count - sub))
         }
         self.codes = array
     }
@@ -37,16 +36,13 @@ struct Code {
     let characterCode: UInt16           // 16 uimsbf
     let numberOfFont: UInt8             //  8 uimsbf
     let fonts: [Font]
-    init(_ bytes: [UInt8]) {
-        self.characterCode = UInt16(bytes[0])<<8 | UInt16(bytes[1])
-        self.numberOfFont = bytes[2]
-        var bytes = Array(bytes.suffix(bytes.count - 3)) // 3byte(fonts前まで)
+    init(_ wrapper: ByteArray) throws {
+        self.characterCode = UInt16(try wrapper.get(num: 2))
+        self.numberOfFont = try wrapper.get()
         var array: [Font] = []
         for _ in 0..<numberOfFont {
-            let font = Font(bytes)
+            let font = try Font(wrapper)
             array.append(font)
-            let sub = font.length // 4 or 5 byte + 可変長
-            bytes = Array(bytes.suffix(bytes.count - sub))
         }
         self.fonts = array
     }
@@ -78,28 +74,31 @@ struct Font {
     let regionY: UInt8?                 //  8 uimsbf
     let geometricDataLength: UInt16?    // 16 uimsbf
     let payload: [UInt8]
-    init(_ bytes: [UInt8]) {
-        self.fontId = (bytes[0]&0xF0)>>4
-        self.mode = bytes[0]&0x0F
-        let isCompression = bytes[0]&0x0F != 0x0 && bytes[0]&0x0F != 0x1
+    init(_ wrapper: ByteArray) throws {
+        let fontId = (try wrapper.get(doMove: false)&0xF0)>>4
+        self.fontId = fontId
+        self.mode = try wrapper.get()&0x0F
+        let isCompression = fontId&0x0F != 0x0 && fontId&0x0F != 0x1
         if isCompression {
             self.depth = nil
             self.width = nil
             self.height = nil
-            self.regionX = bytes[1]
-            self.regionY = bytes[2]
-            self.geometricDataLength = UInt16(bytes[3])<<8 | UInt16(bytes[4])
+            self.regionX = try wrapper.get()
+            self.regionY = try wrapper.get()
+            self.geometricDataLength = UInt16(try wrapper.get(num: 2))
             // ToDo: 定義探す
-            self.payload = Array(bytes[0..<5+numericCast(Int(regionX!) * Int(regionY!) * Int(geometricDataLength!))/8])
+            let fontLength = Int(regionX!) * Int(regionY!) * Int(geometricDataLength!)/8
+            self.payload = try wrapper.take(fontLength)
         } else {
-            self.depth = bytes[1]
-            self.width = bytes[2]
-            self.height = bytes[3]
+            self.depth = try wrapper.get()
+            self.width = try wrapper.get()
+            self.height = try wrapper.get()
             self.regionX = nil
             self.regionY = nil
             self.geometricDataLength = nil
             // depth+2: 色の深度、 (depth+2)/2: 使用するbit数
-            self.payload = Array(bytes[0..<4+numericCast(Int(depth!+2)/2 * Int(width!) * Int(height!))/8])
+            let fontLength = Int(depth!+2)/2 * Int(width!) * Int(height!)/8
+            self.payload = try wrapper.take(fontLength)
         }
     }
 }

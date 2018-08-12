@@ -7,6 +7,7 @@
 
 
 import Foundation
+import ByteArrayWrapper
 
 // PMT
 public struct ProgramMapTable {
@@ -19,23 +20,31 @@ public struct ProgramMapTable {
     public let descriptor: [Descriptor]         // n byte
     public let stream: [Stream]                 // n byte
     public let CRC_32: UInt32                   // 32 uimsbf
-    public init?(_ data: Data, _ _header: TransportPacket? = nil) {
-        self.header = _header ?? TransportPacket(data)
-        self.programAssociationSection = ProgramAssociationSection(data, header)
-        var bytes = programAssociationSection.payload
-        self.PCR_PID = UInt16(bytes[0]&0x1F)<<8 | UInt16(bytes[1])
+    public init?(_ data: Data, _ _header: TransportPacket? = nil) throws {
+        self.header = try getHeader(data, _header)
+        self.programAssociationSection = try ProgramAssociationSection(data, header)
+        if programAssociationSection.sectionLength - 1 > programAssociationSection.payload.count {
+            return nil
+        }
+        let bytes = programAssociationSection.payload
+        let wrapper = ByteArray(bytes)
+        self.PCR_PID = UInt16(try wrapper.get(num: 2)&0x1FFF)
         // -- Descriptor
-        let descriptorLengthConst = UInt16(bytes[2]&0x0F)<<8 | UInt16(bytes[3])
-        self.programInfoLength = descriptorLengthConst
-        var descriptorLength = descriptorLengthConst
-        bytes = Array(bytes.suffix(bytes.count - 4)) // 4byte(PMT定義分のみ)
+        self.programInfoLength = UInt16(try wrapper.get(num: 2)&0x0FFF)
+        var descriptorLength = Int(programInfoLength)
         var descriptorArray: [Descriptor] = []
         repeat {
-            let descriptor = Descriptor(bytes)
-            descriptorArray.append(descriptor)
-            let sub = 2+Int(descriptor.descriptorLength) // 2byte+可変長(Descriptor)
-            bytes = Array(bytes.suffix(bytes.count - sub))
-            descriptorLength -= numericCast(sub)
+            let index = wrapper.getIndex()
+            do {
+                let descriptor = try Descriptor(wrapper)
+                descriptorArray.append(descriptor)
+                let sub = descriptor.length // 2byte+可変長(Descriptor)
+                descriptorLength -= sub
+            } catch {
+                // 不正なdescriptorLength
+                try wrapper.setIndex(index + descriptorLength)
+                break
+            }
         } while descriptorLength > 0
         self.descriptor = descriptorArray
         // sectionLengthより前のデータ
@@ -47,25 +56,32 @@ public struct ProgramMapTable {
             return nil
         }
         // -- Stream
-        var streamLength = programAssociationSection.sectionLength
+        var streamLength = Int(programAssociationSection.sectionLength)
             - 9 // PMT.sessionLength以下
-            - numericCast(descriptorLengthConst) // descriptorの全体長
+            - Int(programInfoLength) // descriptorの全体長
             - 4 // CRC_32
         var array: [Stream] = []
         repeat {
-            let stream = Stream(bytes)
-            array.append(stream)
-            let sub = 5+Int(stream.esInfoLength) // 5byte+可変長(Stream)
-            bytes = Array(bytes.suffix(bytes.count - sub))
-            streamLength -= numericCast(sub)
+            let index = wrapper.getIndex()
+            do {
+                let stream = try Stream(wrapper)
+                array.append(stream)
+                let sub = stream.length // 5byte+可変長(Stream)
+                streamLength -= sub
+            } catch {
+                // 不正なstreamLength
+                try wrapper.setIndex(index + streamLength)
+                break
+            }
         } while streamLength > 0
         self.stream = array
-        self.CRC_32 = UInt32(bytes[0])<<24 | UInt32(bytes[1])<<16 | UInt32(bytes[2])<<8 | UInt32(bytes[3])
+        self.CRC_32 = UInt32(try wrapper.get(num: 4))
     }
 }
 extension ProgramMapTable : CustomStringConvertible {
     public var description: String {
         return "PMT(PCR_PID: \(String(format: "0x%04x", PCR_PID))"
+            + ", programInfoLength: \(String(format: "0x%04x", programInfoLength))"
             + ", descriptor: \(descriptor)"
             + ", stream: \(stream)"
             + ", CRC_32: \(String(format: "0x%08x", CRC_32))"
@@ -82,9 +98,10 @@ public struct Descriptor {
     public let descriptorTag: UInt8               //  8 uimsbf
     public let descriptorLength: UInt8            //  8 uimsbf
     // ToDo: 追加
-    public init(_ bytes: [UInt8]) {
-        self.descriptorTag = bytes[0]
-        self.descriptorLength = bytes[1]
+    public init(_ wrapper: ByteArray) throws {
+        self.descriptorTag = try wrapper.get()
+        self.descriptorLength = try wrapper.get()
+        try wrapper.skip(Int(descriptorLength))
     }
 }
 extension Descriptor : CustomStringConvertible {
@@ -94,6 +111,11 @@ extension Descriptor : CustomStringConvertible {
             + "}"
     }
 }
+extension Descriptor {
+    public var length: Int {
+        return 2+Int(descriptorLength)
+    }
+}
 public struct Stream {
     public let streamType: UInt8                   //  8 uimsbf
     //public let _reserved1: UInt8                 //  3 bslbf
@@ -101,21 +123,25 @@ public struct Stream {
     //public let _reserved2: UInt8                 //  4 bslbf
     public let esInfoLength: UInt16                // 12 uimsbf
     public let descriptor: [StreamDescriptor]        // 1 byte * esInfoLength
-    public init(_ bytes: [UInt8]) {
-        self.streamType = bytes[0]
-        self.elementaryPID = UInt16(bytes[1]&0x1F)<<8 | UInt16(bytes[2])
-        var esInfoLengthConst = UInt16(bytes[3]&0x0F)<<8 | UInt16(bytes[4])
-        self.esInfoLength = esInfoLengthConst
-        let sub = 5 // Stream
-        var bytes = Array(bytes.suffix(bytes.count - sub))
+    public init(_ wrapper: ByteArray) throws {
+        self.streamType = try wrapper.get()
+        self.elementaryPID = UInt16(try wrapper.get(num: 2)&0x1FFF)
+        self.esInfoLength = UInt16(try wrapper.get(num: 2)&0x0FFF)
+        var descriptorLength = Int(esInfoLength)
         var array: [StreamDescriptor] = []
         repeat {
-            let descriptor = StreamDescriptor(bytes)
-            array.append(descriptor)
-            let sub = 2+Int(descriptor.descriptorLength) // 2byte+可変長(StreamDescriptor)
-            bytes = Array(bytes.suffix(bytes.count - sub))
-            esInfoLengthConst -= numericCast(sub)
-        } while esInfoLengthConst > 0
+            let index = wrapper.getIndex()
+            do {
+                let descriptor = try StreamDescriptor(wrapper)
+                array.append(descriptor)
+                let sub = descriptor.length // 2byte+可変長(StreamDescriptor)
+                descriptorLength -= sub
+            } catch {
+                // 不正なesInfoLength
+                try wrapper.setIndex(index + descriptorLength)
+                break
+            }
+        } while descriptorLength > 0
         self.descriptor = array
     }
 }
@@ -128,21 +154,26 @@ extension Stream : CustomStringConvertible {
             + "}"
     }
 }
+extension Stream {
+    public var length: Int {
+        return 5+Int(esInfoLength)
+    }
+}
 // ARIB STD-B10 第1部 図 6.2-17
 public struct StreamDescriptor {
     public let descriptorTag: UInt8                //  8 uimsbf
     public let descriptorLength: UInt8             //  8 uimsbf
     public let componentTag: UInt8                 //  8 uimsbf
     public let payload: [UInt8]                    //  1 byte * n
-    init(_ bytes: [UInt8]) {
-        self.descriptorTag = bytes[0]
-        self.descriptorLength = bytes[1]
-        self.componentTag = bytes[2]
+    init(_ wrapper: ByteArray) throws {
+        self.descriptorTag = try wrapper.get()
+        self.descriptorLength = try wrapper.get()
+        self.componentTag = try wrapper.get()
         // componentTag分
         if descriptorLength == 0x01 {
             self.payload = []
         } else {
-            self.payload = Array(bytes[3..<Int(3+descriptorLength-1)]) // 3byte(StreamDescriptor) + descriptorLength -1byte(componentTag分)
+            self.payload = try wrapper.take(Int(descriptorLength)-1) // descriptorLength -1byte(componentTag分)
         }
     }
 }
@@ -152,5 +183,10 @@ extension StreamDescriptor : CustomStringConvertible {
             + ", descriptorLength: \(String(format: "0x%02x", descriptorLength))"
             + ", componentTag: \(String(format: "0x%02x", componentTag))"
             + "}"
+    }
+}
+extension StreamDescriptor {
+    public var length: Int {
+        return 2+Int(descriptorLength)
     }
 }

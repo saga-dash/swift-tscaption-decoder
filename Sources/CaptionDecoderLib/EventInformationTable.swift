@@ -7,7 +7,7 @@
 
 
 import Foundation
-
+import ByteArrayWrapper
 
 // ARIB STD-B10 第2部 表5-7
 public struct EventInformationTable {
@@ -19,40 +19,40 @@ public struct EventInformationTable {
     public let lastTableId: UInt8               //  8  uimsbf
     public let payload: [UInt8]                 //  n  byte
     public let events: [Event]
-    public init?(_ data: Data) {
-        self.header = TransportPacket(data)
-        self.programAssociationSection = ProgramAssociationSection(data, header)
+    public init?(_ data: Data, _ _header: TransportPacket? = nil) throws {
+        self.header = try getHeader(data, _header)
+        self.programAssociationSection = try ProgramAssociationSection(data, header)
         let tableId = programAssociationSection.tableId
         if tableId < 0x4E || 0x6F < tableId {
             return nil
         }
-        var bytes = programAssociationSection.payload
+        let bytes = programAssociationSection.payload
         // 5 byte(programAssociationSection終わりまで)
         if bytes.count < Int(programAssociationSection.sectionLength)-5 {
             return nil
         }
-        self.transportStreamId = UInt16(bytes[0])<<8 | UInt16(bytes[1])
-        self.originalNetworkId = UInt16(bytes[2])<<8 | UInt16(bytes[3])
-        self.segmentLastSectionNumber = bytes[4]
-        self.lastTableId = bytes[5]
-        self.payload = Array(bytes.suffix(bytes.count - Int(6))) // 6byte(固定長)
+        let wrapper = ByteArray(bytes)
+        self.transportStreamId = UInt16(try wrapper.get(num: 2))
+        self.originalNetworkId = UInt16(try wrapper.get(num: 2))
+        self.segmentLastSectionNumber = try wrapper.get()
+        self.lastTableId = try wrapper.get()
+        self.payload = try wrapper.clone().take()
         if Int(programAssociationSection.sectionLength) - 11 - 4 < 0 {
             return nil
         }
-        var payloadLength = programAssociationSection.sectionLength
+        var payloadLength = Int(programAssociationSection.sectionLength)
             - 11 // EIT(sessionLength以下の固定分) 5 + 6 byte
             - 4 // CRC_32
-        bytes = Array(bytes.suffix(bytes.count - 6))
         var array: [Event] = []
         repeat {
-            let event = Event(bytes)
-            let sub = event.length // 可変長(Event)
-            if sub > bytes.count {
+            do {
+                let event = try Event(wrapper)
+                array.append(event)
+                let sub = event.length // 可変長(Event)
+                payloadLength -= sub
+            } catch {
                 break
             }
-            array.append(event)
-            bytes = Array(bytes.suffix(bytes.count - sub))
-            payloadLength -= numericCast(sub)
         } while payloadLength > 12
         self.events = array
     }
@@ -113,25 +113,26 @@ public struct Event {
     public let descriptorsLoopLength: UInt16    // 12  uimsbf
     public let descriptors: [EventDescriptor]
     // ToDo: CRC
-    public init(_ bytes: [UInt8]) {
-        self.eventId = UInt16(bytes[0])<<8 | UInt16(bytes[1])
-        self.startTime = UInt64(bytes[2])<<32 | UInt64(bytes[3])<<24 | UInt64(bytes[4])<<16 | UInt64(bytes[5])<<8 | UInt64(bytes[6])
-        self.duration = UInt32(bytes[7])<<16 | UInt32(bytes[8])<<8 | UInt32(bytes[9])
-        self.runningStatus = (bytes[10]&0xE0)>>5
-        self.freeCAMode = (bytes[10]&0x10)>>4
-        self.descriptorsLoopLength = UInt16(bytes[10]&0x0F)<<8 | UInt16(bytes[11])
-        var bytes = Array(bytes.suffix(bytes.count - numericCast(12))) // 12 byte(Eventサイズ)
-        bytes = Array(bytes.prefix(numericCast(descriptorsLoopLength)))
-        var payloadLength = bytes.count
+    public init(_ wrapper: ByteArray) throws {
+        self.eventId = UInt16(try wrapper.get(num: 2))
+        self.startTime = UInt64(try wrapper.get(num: 5))
+        self.duration = UInt32(try wrapper.get(num: 3))
+        self.runningStatus = (try wrapper.get(doMove: false)&0xE0)>>5
+        self.freeCAMode = (try wrapper.get(doMove: false)&0x10)>>4
+        self.descriptorsLoopLength = UInt16(try wrapper.get(num: 2)&0x0FFF)
+        var payloadLength = Int(descriptorsLoopLength)
         var array: [EventDescriptor] = []
         repeat {
-            guard let descriptor = convertEventDescriptor(bytes) else {
+            do {
+                guard let descriptor = try convertEventDescriptor(wrapper) else {
+                    break
+                }
+                array.append(descriptor)
+                let sub = descriptor.length // 可変長(EventDescriptor)
+                payloadLength -= sub
+            } catch {
                 break
             }
-            array.append(descriptor)
-            let sub = descriptor.length // 可変長(EventDescriptor)
-            bytes = Array(bytes.suffix(bytes.count - sub))
-            payloadLength -= numericCast(sub)
         } while payloadLength > 4 // 4 byte(CRC)
         self.descriptors = array
     }

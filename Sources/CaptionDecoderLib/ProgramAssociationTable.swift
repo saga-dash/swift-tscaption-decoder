@@ -7,6 +7,7 @@
 
 
 import Foundation
+import ByteArrayWrapper
 
 // PAT
 public struct ProgramAssociationTable {
@@ -14,24 +15,35 @@ public struct ProgramAssociationTable {
     public let programAssociationSection: ProgramAssociationSection
     public let programs: [Program]
     public let CRC_32: UInt32    // 32 uimsbf
-    public init(_ data: Data, _ _header: TransportPacket? = nil) {
-        self.header = _header ?? TransportPacket(data)
-        self.programAssociationSection = ProgramAssociationSection(data, header)
-        var bytes = programAssociationSection.payload
-        let payloadLength = programAssociationSection.sectionLength
+    public init?(_ data: Data, _ _header: TransportPacket? = nil) throws {
+        self.header = try getHeader(data, _header)
+        self.programAssociationSection = try ProgramAssociationSection(data, header)
+        // 1 byte(ProgramAssociationSection終わりまで)
+        if programAssociationSection.sectionLength - 1 > programAssociationSection.payload.count {
+            return nil
+        }
+        let bytes = programAssociationSection.payload
+        let wrapper = ByteArray(bytes)
+        var programLength = Int(programAssociationSection.sectionLength
             - 5 // PAT(sessionLength以下の固定分)
             - 4 // CRC_32
-        var programLength = payloadLength
+        )
         var array: [Program] = []
         repeat {
-            array.append(Program(bytes))
-            let sub = 4 // 4byte(Program)
-            bytes = Array(bytes.suffix(bytes.count - sub))
-            programLength -= numericCast(sub)
+            let index = wrapper.getIndex()
+            do {
+                let program = try Program(wrapper)
+                array.append(program)
+                let sub = program.length // 4byte
+                programLength -= sub
+            } catch {
+                // 不正なprogramLength
+                try wrapper.setIndex(index + programLength)
+                break
+            }
         } while programLength > 0
         self.programs = array
-        self.CRC_32 = UInt32(bytes[0])<<24 | UInt32(bytes[1])<<16 | UInt32(bytes[2])<<8 | UInt32(bytes[3])
-        assert(programAssociationSection.sectionLength < LENGTH - numericCast(payloadLength), "ToDo: PATが188Byteを超えた場合の対処")
+        self.CRC_32 = UInt32(try wrapper.get(num: 4))
     }
 }
 extension ProgramAssociationTable : CustomStringConvertible {
@@ -58,9 +70,9 @@ public struct Program {
     public let programNumber: UInt16               // 16 uimsbf
     //public let _reserved1: UInt8                 //  3 bslbf
     public let PID: UInt16                         // 13 uimsbf
-    public init(_ bytes: [UInt8]) {
-        self.programNumber = UInt16(bytes[0])<<8 | UInt16(bytes[1])
-        self.PID = UInt16(bytes[2]&0x1F)<<8 | UInt16(bytes[3])
+    public init(_ wrapper: ByteArray) throws {
+        self.programNumber = UInt16(try wrapper.get(num: 2))
+        self.PID = UInt16(try wrapper.get(num: 2)&0x1FFF)
     }
 }
 extension Program : CustomStringConvertible {
@@ -68,5 +80,10 @@ extension Program : CustomStringConvertible {
         return "{programNumber: \(String(format: "0x%04x", programNumber))"
             + ", PID: \(String(format: "0x%04x", PID))"
             + "}"
+    }
+}
+extension Program {
+    public var length: Int {
+        return 4
     }
 }

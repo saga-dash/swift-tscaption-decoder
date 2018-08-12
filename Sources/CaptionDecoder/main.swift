@@ -77,13 +77,17 @@ let main = command(
             if data.count != LENGTH {
                 exit(-1)
             }
-            let result = CaptionDecoderMain(data: data, options: options)
-            for unit in result {
-                //print(unit.str)
-                let encoder = JSONEncoder()
-                let encoded = try! encoder.encode(unit)
-                print(String(data: encoded, encoding: .utf8)!)
-
+            do {
+                let result = try CaptionDecoderMain(data: data, options: options)
+                for unit in result {
+                    //print(unit.str)
+                    let encoder = JSONEncoder()
+                    let encoded = try! encoder.encode(unit)
+                    print(String(data: encoded, encoding: .utf8)!)
+                    fflush(stdout)
+                }
+            } catch {
+                print("\(error)")
                 fflush(stdout)
             }
         }

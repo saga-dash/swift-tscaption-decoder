@@ -7,6 +7,7 @@
 
 
 import Foundation
+import ByteArrayWrapper
 
 let SYNCHRONIZED_PES = 0x80
 let ASYNCHRONOUS_PES = 0x81
@@ -37,26 +38,27 @@ public struct Caption {
     // --- Synchronized_PES_data ---
     public let CRC_16: UInt16                    // 16 rpchof
     public let payload: [UInt8]                    //  n byte
-    public init?(_ data: Data) {
-        self.header = TransportPacket(data, isPes: true)
-        var bytes = header.payload
+    public init?(_ data: Data) throws {
+        self.header = try getHeader(data, isPes: true)
+        let bytes = header.payload
         if !(bytes[0] == 0x00 && bytes[1] == 0x0 && bytes[2] == 0x01) {
             return nil
         }
-        guard let pesHeader = PacketizedElementaryStream(data, header) else {
+        guard let pesHeader = try PacketizedElementaryStream(data, header) else {
             return nil
         }
         self.pesHeader = pesHeader
-        bytes = pesHeader.payload
-        self.dataIdentifier = bytes[0]
-        self.privateStreamId = bytes[1]
-        self.pesDataPacketHeaderLength = bytes[2]&0x0F
+        let wrapper = ByteArray(pesHeader.payload)
+        let dataIdentifier = try wrapper.get()
+        self.dataIdentifier = dataIdentifier
+        self.privateStreamId = try wrapper.get()
+        self.pesDataPacketHeaderLength = try wrapper.get()&0x0F
         // 同期型 PES: 0x80, 非同期型 PES パケット: 0x81
-        if bytes[0] != SYNCHRONIZED_PES && bytes[0] != ASYNCHRONOUS_PES {
+        if dataIdentifier != SYNCHRONIZED_PES && dataIdentifier != ASYNCHRONOUS_PES {
             print("字幕か文字スーパーである")
             return nil
         }
-        if bytes[1] != UNUSED {
+        if privateStreamId != UNUSED {
             return nil
         }
         // 3 byte(headerSizeまで), 5 byte(文字の最小サイズ)
@@ -64,52 +66,58 @@ public struct Caption {
             //print("header分のpayloadが足りない")
             return nil
         }
-        bytes = Array(bytes.suffix(bytes.count - numericCast(3+pesDataPacketHeaderLength))) // 3 byte(headerSizeまで) + 可変長分
-        self.dataGroupId = bytes[0]>>2
-        self.dataGroupVersion = bytes[0]&0x03
-        self.dataGroupLinkNumber = bytes[1]
-        self.lastDataGroupLinkNumber = bytes[2]
-        self.dataGroupSize = UInt16(bytes[3])<<8 | UInt16(bytes[4])
-        self.TMD = bytes[5]>>6
+        try wrapper.skip(Int(pesDataPacketHeaderLength)) // 可変長分
+        self.dataGroupId = try wrapper.get(doMove: false)>>2
+        self.dataGroupVersion = try wrapper.get()&0x03
+        self.dataGroupLinkNumber = try wrapper.get()
+        self.lastDataGroupLinkNumber = try wrapper.get()
+        self.dataGroupSize = UInt16(try wrapper.get(num: 2))
+        let TMD = try wrapper.get(doMove: false)>>6
+        self.TMD = TMD
+        _ = try wrapper.get()
         // 時刻制御モード: フリー: 0x00, リアルタイム: 0x01, オフセットタイム: 0x10
-        let isManagedTime = bytes[5]>>6 == 0x01 || bytes[5]>>6 == 0x10
-        let offset = isManagedTime ? 5 : 0
+        let isManagedTime = TMD == 0x01 || TMD == 0x10
         if isManagedTime {
-            self.STM = UInt64(bytes[5]&0x0F)<<32 | UInt64(bytes[6])<<24 | UInt64(bytes[7])<<16 | UInt64(bytes[8])<<8 | UInt64(bytes[9])
+            self.STM = UInt64(try wrapper.get(num: 5)&0xFFFFFFFFF0)
         } else {
             self.STM = nil
         }
-        self.dataUnitLoopLength = UInt32(bytes[offset+5])<<16 | UInt32(bytes[offset+6])<<8 | UInt32(bytes[offset+7])
+        self.dataUnitLoopLength = UInt32(try wrapper.get(num: 3))
         if bytes.count < dataGroupSize + 5 + 2 { // 5 byte(DataUnit?) + 2 byte(CRC)
             //print("payloadが足りない")
             //print(bytes.count, dataGroupSize, pesHeader.packetLength)
             return nil
         }
-        bytes = Array(bytes.suffix(bytes.count - numericCast(offset+9))) // 9 byte(Captionサイズ?)
-        bytes = Array(bytes.prefix(numericCast(dataGroupSize) - 4 + 2)) // 4 byte(dataGroupSizeからCaptionの終わりまで), 2 byte(CRC)
         self.payload = bytes
-        var payloadLength = bytes.count
+        var payloadLength = Int(dataGroupSize)
+            - 1 // TMD + reserved
+            - 3 // dataUnitLoopLength
+            - (isManagedTime ? 5 : 0) // STM
         var array: [DataUnit] = []
         repeat {
-            guard let dataUnit = DataUnit(bytes) else {
+            guard let dataUnit = try DataUnit(wrapper) else {
                 //ToDo:
                 if array.count != 0 {
                     //print("データユニット分離符号がない")
                     //printHexDumpForBytes(bytes: bytes)
                 }
+                try wrapper.skip(payloadLength - 1) // 1byte(length?)
                 break
             }
             array.append(dataUnit)
-            let sub = 5+Int(dataUnit.dataUnitSize) // 5byte+可変長(DataUnit)
-            bytes = Array(bytes.suffix(bytes.count - sub))
-            payloadLength -= numericCast(sub)
-        } while payloadLength > 2 // 2 byte(CRC)
+            let sub = dataUnit.length // 5byte+可変長(DataUnit)
+            payloadLength -= sub
+        } while payloadLength > 0
         self.dataUnit = array
-        self.CRC_16 = UInt16(bytes[bytes.count-2])<<8 | UInt16(bytes[bytes.count-1])
-        let headerLength = 3 + pesDataPacketHeaderLength // 3 byte(headerSizeまで) + 可変長分
-        let crcBytes = Array(pesHeader.payload[numericCast(headerLength)..<pesHeader.payload.count-2]) // 2 byte(CRC)
+        self.CRC_16 = UInt16(try wrapper.get(num: 2))
+        let headerLength = 3 + Int(pesDataPacketHeaderLength) // 3 byte(headerSizeまで) + 可変長分
+        let wrapper_crc = ByteArray(pesHeader.payload)
+        try wrapper_crc.skip(Int(headerLength))
+        let crcBytes = try wrapper_crc.take(pesHeader.payload.count-headerLength-2) // 2 byte(CRC)
         let calcCRC16 = crc16(crcBytes)!
         if CRC_16 != calcCRC16 {
+            // ToDo:
+            fatalError("")
             //print("\(String(format: "0x%04x", CRC_16))", "\(String(format: "0x%04x", calcCRC16))")
             return nil
         }
@@ -137,15 +145,15 @@ public struct DataUnit {
     public let dataUnitParameter: UInt8      //  8 uimsbf
     public let dataUnitSize: UInt32          // 24 uimsbf
     public let payload: [UInt8]
-    public init?(_ bytes: [UInt8]) {
+    public init?(_ wrapper: ByteArray) throws {
+        self.unitSeparator = try wrapper.get()
         // データユニット分離符号: 0x1F
-        if bytes[0] != 0x1F {
+        if unitSeparator != 0x1F {
             return nil
         }
-        self.unitSeparator = bytes[0]
-        self.dataUnitParameter = bytes[1]
-        self.dataUnitSize = UInt32(bytes[2])<<16 | UInt32(bytes[3])<<8 | UInt32(bytes[4])
-        self.payload = Array(bytes[5..<5+numericCast(dataUnitSize)])
+        self.dataUnitParameter = try wrapper.get()
+        self.dataUnitSize = UInt32(try wrapper.get(num: 3)&0xFFFFFF)
+        self.payload = try wrapper.take(Int(dataUnitSize))
     }
 }
 extension DataUnit : CustomStringConvertible {
@@ -155,5 +163,10 @@ extension DataUnit : CustomStringConvertible {
             + ", dataUnitSize: \(String(format: "0x%04x", dataUnitSize))"
             //+ ", dataUnitLoopLength: \(String(format: "0x%08x", dataUnitLoopLength))"
             + ")"
+    }
+}
+extension DataUnit {
+    public var length: Int {
+        return 5+Int(dataUnitSize)
     }
 }

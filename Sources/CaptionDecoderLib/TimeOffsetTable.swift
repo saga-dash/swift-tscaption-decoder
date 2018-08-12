@@ -7,6 +7,7 @@
 
 
 import Foundation
+import ByteArrayWrapper
 
 // ARIB STD-B10 第2部 5.2.9 時刻日付オフセットテーブル(TOT)(TimeOffsetTable)
 // ARIB STD-B10 第1部 図 6.1-9 TOT のデータ構造
@@ -19,16 +20,17 @@ public struct TimeOffsetTable {
     public let sectionLength: UInt16                // 12  uimsbf
     public let jstTime: UInt64                      // 40  bslbf
     // ToDo:
-    public init?(_ data: Data, _ _header: TransportPacket? = nil) {
-        self.header = _header ?? TransportPacket(data)
+    public init?(_ data: Data, _ _header: TransportPacket? = nil) throws {
+        self.header = try getHeader(data, _header)
         let bytes = header.payload
-        self.tableId = bytes[0]
+        let wrapper = ByteArray(bytes)
+        self.tableId = try wrapper.get()
         if tableId != 0x73 {
             return nil
         }
-        self.sectionSyntaxIndicator = (bytes[1]&0x80)>>7
-        self.sectionLength = UInt16(bytes[1]&0x0F)<<8 | UInt16(bytes[2])
-        self.jstTime = UInt64(bytes[3])<<32 | UInt64(bytes[4])<<24 | UInt64(bytes[5])<<16 | UInt64(bytes[6])<<8 | UInt64(bytes[7])
+        self.sectionSyntaxIndicator = (try wrapper.get(doMove: false)&0x80)>>7
+        self.sectionLength = UInt16(try wrapper.get(num: 2)&0x0FFF)
+        self.jstTime = UInt64(try wrapper.get(num: 5))
         // ToDo: CRC_32
     }
 }

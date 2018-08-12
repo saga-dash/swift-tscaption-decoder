@@ -7,6 +7,7 @@
 
 
 import Foundation
+import ByteArrayWrapper
 
 public struct ProgramAssociationSection {
     public let header: TransportPacket
@@ -22,18 +23,19 @@ public struct ProgramAssociationSection {
     public let sectionNumber: UInt8                //  8  uimsbf
     public let lastSectionNumber: UInt8            //  8  uimsbf
     public let payload: [UInt8]                    //  n  byte
-    public init(_ data: Data, _ _header: TransportPacket? = nil) {
-        self.header = _header ?? TransportPacket(data)
+    public init(_ data: Data, _ _header: TransportPacket? = nil) throws {
+        self.header = try getHeader(data, _header)
         let bytes = header.payload
-        self.tableId = bytes[0]
-        self.sectionSyntaxIndicator = (bytes[1]&0x80)>>7
-        self.sectionLength = UInt16(bytes[1]&0x0F)<<8 | UInt16(bytes[2])
-        self.serviceId = UInt16(bytes[3])<<8 | UInt16(bytes[4])
-        self.versionNumber = (bytes[5]&0x3E)>>1
-        self.currentNextIndicator = (bytes[5]&0x01)
-        self.sectionNumber = (bytes[6])
-        self.lastSectionNumber = (bytes[7])
-        self.payload = Array(bytes.suffix(bytes.count - Int(8))) // 8byte(固定長)
+        let wrapper = ByteArray(bytes)
+        self.tableId = try wrapper.get()
+        self.sectionSyntaxIndicator = (try wrapper.get(doMove: false)&0x80)>>7
+        self.sectionLength = UInt16(try wrapper.get(num: 2))&0x0FFF
+        self.serviceId = UInt16(try wrapper.get(num: 2))
+        self.versionNumber = (try wrapper.get(doMove: false)&0x3E)>>1
+        self.currentNextIndicator = (try wrapper.get()&0x01)
+        self.sectionNumber = try wrapper.get()
+        self.lastSectionNumber = try wrapper.get()
+        self.payload = try wrapper.take()
     }
 }
 extension ProgramAssociationSection : CustomStringConvertible {
