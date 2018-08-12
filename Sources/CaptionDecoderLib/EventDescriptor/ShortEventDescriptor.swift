@@ -7,7 +7,7 @@
 
 
 import Foundation
-
+import ByteArrayWrapper
 
 // ARIB STD-B10 第1部  図 6.2-12 短形式イベント記述子のデータ構造
 public struct ShortEventDescriptor: EventDescriptor {
@@ -18,16 +18,14 @@ public struct ShortEventDescriptor: EventDescriptor {
     public let eventName: [UInt8]                   //  n byte
     public let textLength: UInt8                    //  8 uimsbf
     public let text: [UInt8]                        //  n byte
-    public init(_ bytes: [UInt8]) {
-        self.descriptorTag = bytes[0]
-        self.descriptorLength = bytes[1]
-        self.languageCode = UInt32(bytes[2])<<16 | UInt32(bytes[3])<<8 | UInt32(bytes[4])
-        self.eventNameLength = bytes[5]
-        var index = 6+numericCast(eventNameLength)
-        self.eventName = Array(bytes[6..<index])
-        self.textLength = bytes[index]
-        index += 1
-        self.text = Array(bytes[index..<index+numericCast(textLength)])
+    public init(_ wrapper: ByteArray) throws {
+        self.descriptorTag = try wrapper.get()
+        self.descriptorLength = try wrapper.get()
+        self.languageCode = UInt32(try wrapper.get(num: 3))
+        self.eventNameLength = try wrapper.get()
+        self.eventName = try wrapper.take(Int(eventNameLength))
+        self.textLength = try wrapper.get()
+        self.text = try wrapper.take(Int(textLength))
     }
 }
 extension ShortEventDescriptor : CustomStringConvertible {

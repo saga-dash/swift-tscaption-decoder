@@ -23,11 +23,11 @@ var blackList: [String] = [
     "いつでも見ることができるＮＨＫの最新のニュース",
 ]
 
-public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
+public func CaptionDecoderMain(data: Data, options: Options) throws -> [Unit] {
     if data.count != LENGTH {
         return []
     }
-    var header = TransportPacket(data)
+    var header = try TransportPacket(data)
     var data = data
     // はじめのunitではない&&前のデータがない
     if (header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil) {
@@ -48,7 +48,7 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
             }
         }
     }
-    header = TransportPacket(data)
+    header = try TransportPacket(data)
     if !header.enoughHeaderLength {
         // データが足りていなければ、ストックする
         stock[header.PID] = data
@@ -59,7 +59,7 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
     if header.PID == 0x00 {
         //printHexDumpForBytes(data)
         //print(header)
-        guard let pat = ProgramAssociationTable(data, header) else {
+        guard let pat = try ProgramAssociationTable(data, header) else {
             // データが足りていなければ、ストックする
             stock[header.PID] = data
             return []
@@ -76,8 +76,8 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
     }
     // TDT or TOT?
     if header.PID == 0x14 {
-        guard let date = TimeOffsetTable(data)?.date else {
-            guard let date = TimeandDateTable(data)?.date else {
+        guard let date = try TimeOffsetTable(data)?.date else {
+            guard let date = try TimeandDateTable(data)?.date else {
                 print("不正な時刻")
                 return []
             }
@@ -91,7 +91,7 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
     }
     // PMT?
     else if header.PID == targetPMTPID {
-        guard let pmt = ProgramMapTable(data) else {
+        guard let pmt = try ProgramMapTable(data) else {
             // データが足りていなければ、ストックする
             stock[header.PID] = data
             return []
@@ -120,7 +120,7 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
     }
     else if header.PID == targetCaptionPID {
         //printHexDumpForBytes(data)
-        guard let caption = Caption(data) else {
+        guard let caption = try Caption(data) else {
             stock[header.PID] = data
             return []
         }
@@ -134,7 +134,7 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         }
         //printHexDumpForBytes(bytes: caption.payload)
         //print(caption)
-        let result = caption.dataUnit.map({(dataUnit: DataUnit) -> Unit? in
+        let result = try caption.dataUnit.map({(dataUnit: DataUnit) -> Unit? in
             // ARIB STD-B24 第一編 第 3 部 表 9-12 データユニットの種類
             // 本文: 0x20, 1バイト DRCS: 0x30, 2バイト DRCS: 0x31
             switch dataUnit.dataUnitParameter {
@@ -146,7 +146,7 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
                 return result
             case 0x30, 0x31:
                 //print(data.map({String(format: "0x%02x", $0)}).joined(separator: ", "))
-                let drcs = DRCS(dataUnit.payload)
+                let drcs = try DRCS(dataUnit.payload)
                 //print(drcs)
                 var controls: [Control] = []
                 for code in drcs.codes {
@@ -176,7 +176,7 @@ public func CaptionDecoderMain(data: Data, options: Options) -> [Unit] {
         if header.payloadUnitStartIndicator != 0x01 {
             return []
         }
-        guard let eit = EventInformationTable(data) else {
+        guard let eit = try EventInformationTable(data) else {
             // データが足りていなければ、ストックする
             stock[header.PID] = data
             return []

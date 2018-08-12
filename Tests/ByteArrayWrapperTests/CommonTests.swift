@@ -31,6 +31,13 @@ final class CommonTests: XCTestCase {
         _ = try clone.get(num: 2)
         XCTAssertNotEqual(wrapper.getIndex(), clone.getIndex())
     }
+    func testCount() throws {
+        let bytes: [UInt8] = [1, 2, 3, 4, 5, 6]
+        let wrapper = ByteArray(bytes)
+        XCTAssertEqual(6, wrapper.count)
+        _ = try wrapper.take(3)
+        XCTAssertEqual(3, wrapper.count)
+    }
     func testTake() throws {
         let bytes: [UInt8] = [1, 2, 3, 4, 5, 6]
         let wrapper = ByteArray(bytes)
@@ -54,10 +61,11 @@ final class CommonTests: XCTestCase {
         let bytes: [UInt8] = [1, 2, 3, 4, 5, 6]
         let wrapper = ByteArray(bytes)
         try wrapper.skip(3)
-        XCTAssertThrowsError(try wrapper.skip(0)) { error in
+        XCTAssertThrowsError(try wrapper.skip(-1)) { error in
             print("invalidArgument", error)
             XCTAssertTrue(error is ByteArrayError)
         }
+        try wrapper.skip(0)
         XCTAssertThrowsError(try wrapper.skip(200)) { error in
             print("outOfRange", error)
             XCTAssertTrue(error is ByteArrayError)

@@ -7,25 +7,23 @@
 
 
 import Foundation
-
+import ByteArrayWrapper
 
 // ARIB STD-B10 第1部  図 6.2-19 コンテント記述子のデータ構造
 public struct ContentDescriptor: EventDescriptor {
     public let descriptorTag: UInt8                 //  8 uimsbf
     public let descriptorLength: UInt8              //  8 uimsbf
     public let contents: [ContentDescriptorSub]
-    public init(_ bytes: [UInt8]) {
-        self.descriptorTag = bytes[0]
-        self.descriptorLength = bytes[1]
-        var bytes = Array(bytes.suffix(bytes.count - numericCast(2))) // 2 byte(ContentDescriptorサイズ)
-        var payloadLength = descriptorLength
+    public init(_ wrapper: ByteArray) throws {
+        self.descriptorTag = try wrapper.get()
+        self.descriptorLength = try wrapper.get()
+        var payloadLength = Int(descriptorLength)
         var array: [ContentDescriptorSub] = []
         repeat {
-            let contentSub = ContentDescriptorSub(bytes)
+            let contentSub = try ContentDescriptorSub(wrapper)
             array.append(contentSub)
-            let sub = 2 // 2 byte 固定長(ContentDescriptorSub)
-            bytes = Array(bytes.suffix(bytes.count - sub))
-            payloadLength -= numericCast(sub)
+            let sub = contentSub.length // 2 byte 固定長(ContentDescriptorSub)
+            payloadLength -= sub
         } while payloadLength > 2
         self.contents = array
     }
@@ -44,11 +42,11 @@ public struct ContentDescriptorSub {
     public let contentNibbleLevel2: UInt8           //  4 uimsbf
     public let userNibble1: UInt8                   //  4 uimsbf
     public let userNibble2: UInt8                   //  4 uimsbf
-    init(_ bytes: [UInt8]) {
-        self.contentNibbleLevel1 = (bytes[0]&0xF0)>>4
-        self.contentNibbleLevel2 = (bytes[0]&0x0F)
-        self.userNibble1 = (bytes[1]&0xF0)>>4
-        self.userNibble2 = (bytes[1]&0x0F)
+    init(_ wrapper: ByteArray) throws {
+        self.contentNibbleLevel1 = (try wrapper.get(doMove: false)&0xF0)>>4
+        self.contentNibbleLevel2 = (try wrapper.get()&0x0F)
+        self.userNibble1 = (try wrapper.get(doMove: false)&0xF0)>>4
+        self.userNibble2 = (try wrapper.get()&0x0F)
     }
 }
 extension ContentDescriptorSub : CustomStringConvertible {
@@ -60,6 +58,9 @@ extension ContentDescriptorSub : CustomStringConvertible {
     }
 }
 extension ContentDescriptorSub {
+    public var length: Int {
+        return 2
+    }
     // ARIB STD-B10 第2部  付録H [ジャンル大分類]
     public var largeGenreClassification: String {
         switch contentNibbleLevel1 {

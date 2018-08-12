@@ -7,6 +7,7 @@
 
 
 import Foundation
+import ByteArrayWrapper
 
 public struct TransportPacket {
     public let data: Data
@@ -19,17 +20,18 @@ public struct TransportPacket {
     public let adaptationFieldControl: UInt8        //  2  bslbf
     public let continuityCounter: UInt8             //  4  uimsbf
     let isPes: Bool
-    public init(_ data: Data, isPes: Bool = false) {
+    public init(_ data: Data, isPes: Bool = false) throws {
         self.data = data
         let bytes = [UInt8](data)
-        self.syncByte = bytes[0]
-        self.transportErrorIndicator = (bytes[1]&0x80)>>7
-        self.payloadUnitStartIndicator = (bytes[1]&0x40)>>6
-        self.transportPriority = (bytes[1]&0x20)>>5
-        self.PID = UInt16(bytes[1]&0x1F)<<8 | UInt16(bytes[2])
-        self.transportScramblingControl = (bytes[3]&0xC0)>>6
-        self.adaptationFieldControl = (bytes[3]&0x30)>>4
-        self.continuityCounter = (bytes[3]&0x0F)
+        let wrapper = ByteArray(bytes)
+        self.syncByte = try wrapper.get()
+        self.transportErrorIndicator = (try wrapper.get(doMove: false)&0x80)>>7
+        self.payloadUnitStartIndicator = (try wrapper.get(doMove: false)&0x40)>>6
+        self.transportPriority = (try wrapper.get(doMove: false)&0x20)>>5
+        self.PID = UInt16(try wrapper.get(num: 2)&0x1FFF)
+        self.transportScramblingControl = (try wrapper.get(doMove: false)&0xC0)>>6
+        self.adaptationFieldControl = (try wrapper.get(doMove: false)&0x30)>>4
+        self.continuityCounter = (try wrapper.get()&0x0F)
         self.isPes = isPes
     }
 }

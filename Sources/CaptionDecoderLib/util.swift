@@ -8,6 +8,13 @@
 
 import Foundation
 
+public func getHeader(_ data: Data, _ _header: TransportPacket? = nil, isPes: Bool = false) throws -> TransportPacket {
+    guard let header = _header else {
+        return try TransportPacket(data, isPes: isPes)
+    }
+    return header
+}
+
 public func convertJSTStr(_ date: Date?) -> String? {
     guard let date = date else {
         return nil

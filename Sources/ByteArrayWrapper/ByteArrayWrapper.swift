@@ -18,6 +18,9 @@ public class ByteArray {
     public func clone() -> ByteArray {
         return ByteArray(bytes, index)
     }
+    public var count: Int {
+        return bytes.count - index
+    }
     public func take(_ num: Int? = nil) throws -> [UInt8] {
         guard let num = num else {
             defer {
@@ -37,8 +40,8 @@ public class ByteArray {
         return Array(bytes[index..<index+num])
     }
     public func skip(_ num: Int) throws {
-        if num < 1 {
-            throw ByteArrayError.invalidArgument("引数は1以上を指定")
+        if num < 0 {
+            throw ByteArrayError.invalidArgument("引数は0以上を指定")
         }
         if bytes.count < index + num {
             throw ByteArrayError.outOfRange()
