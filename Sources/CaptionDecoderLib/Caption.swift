@@ -95,13 +95,14 @@ public struct Caption {
             - (isManagedTime ? 5 : 0) // STM
         var array: [DataUnit] = []
         repeat {
+            let index = wrapper.getIndex()
             guard let dataUnit = try DataUnit(wrapper) else {
                 //ToDo:
                 if array.count != 0 {
                     //print("データユニット分離符号がない")
                     //printHexDumpForBytes(bytes: bytes)
                 }
-                try wrapper.skip(payloadLength - 1) // 1byte(length?)
+                try wrapper.setIndex(index + payloadLength)
                 break
             }
             array.append(dataUnit)

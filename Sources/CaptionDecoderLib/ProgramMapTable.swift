@@ -127,6 +127,9 @@ public struct Stream {
         self.streamType = try wrapper.get()
         self.elementaryPID = UInt16(try wrapper.get(num: 2)&0x1FFF)
         self.esInfoLength = UInt16(try wrapper.get(num: 2)&0x0FFF)
+        if wrapper.count < esInfoLength {
+            throw ByteArrayError.outOfRange()
+        }
         var descriptorLength = Int(esInfoLength)
         var array: [StreamDescriptor] = []
         repeat {
