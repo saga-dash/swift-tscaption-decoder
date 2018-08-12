@@ -188,7 +188,10 @@ public func CaptionDecoderMain(data: Data, options: Options) throws -> [Unit] {
         if !eit.isPresent {
             return []
         }
-        let event = eit.events.first!
+        guard let event = eit.events.first else {
+            // eventを解析出来なかった
+            return []
+        }
         // 番組表(0x4E)記述子を取得
         guard let shortDescriptor = event.shortDescriptor else {
             return []
