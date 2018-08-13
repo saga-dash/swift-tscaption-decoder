@@ -7,6 +7,7 @@
 
 
 import Foundation
+import ByteArrayWrapper
 
 
 var G0 = MFMode(charSet: .GSet, charTable: CharTableGset.KANJI.rawValue, byte: 2)!
@@ -16,7 +17,7 @@ var G3 = MFMode(charSet: .DRCS, charTable: CharTableDRCS.MACRO.rawValue, byte: 1
 var GL: UnsafeMutablePointer<MFMode> = UnsafeMutablePointer(&G0)
 var GR: UnsafeMutablePointer<MFMode> = UnsafeMutablePointer(&G2)
 
-public func ARIB8charDecode(_ dataUnit: DataUnit) -> Unit {
+public func ARIB8charDecode(_ dataUnit: DataUnit) throws -> Unit {
     // ARIB STD-B24 第一編 第 3 部 第9章 字幕・文字スーパーの伝送 表 9-11 データユニット
     // データユニット分離符号: 0x1F
     if dataUnit.unitSeparator != 0x1F {
@@ -33,34 +34,34 @@ public func ARIB8charDecode(_ dataUnit: DataUnit) -> Unit {
     G3 = MFMode(charSet: .DRCS, charTable: CharTableDRCS.MACRO.rawValue, byte: 1)!
     GL = UnsafeMutablePointer(&G0)
     GR = UnsafeMutablePointer(&G2)
-    return Analyze(dataUnit.payload)
+    return try Analyze(dataUnit.payload)
 }
-public func ARIB8charDecode(_ bytes: [UInt8]) -> Unit {
+public func ARIB8charDecode(_ bytes: [UInt8]) throws -> Unit {
     G0 = MFMode(charSet: .GSet, charTable: CharTableGset.KANJI.rawValue, byte: 2)!
     G1 = MFMode(charSet: .GSet, charTable: CharTableGset.ASCII.rawValue, byte: 1)!
     G2 = MFMode(charSet: .GSet, charTable: CharTableGset.HIRA.rawValue, byte: 1)!
     G3 = MFMode(charSet: .GSet, charTable: CharTableGset.KANA.rawValue, byte: 1)!
     GL = UnsafeMutablePointer(&G0)
     GR = UnsafeMutablePointer(&G2)
-    return Analyze(bytes)
+    return try Analyze(bytes)
 }
-func Analyze(_ bytes: [UInt8]) -> Unit {
-    var index = 0
+func Analyze(_ bytes: [UInt8]) throws -> Unit {
+    let wrapper = ByteArray(bytes)
     var str = ""
     var controls: [Control] = []
-    while index < bytes.count {
-        let byte = bytes[index]
+    while 0 < wrapper.count {
+        let byte = try wrapper.get(doMove: false)
         // 制御コード?
         guard let code = ControlCode(rawValue: byte) else {
             if byte <= 0x20 || (0x7F<byte && byte<=0xA0) {
                 fatalError("未定義の制御コード: \(String(format: "%02x", byte))")
             }
-            let control = getChar(bytes, index: &index, GL: GL, GR: GR)
+            let control = try getChar(wrapper, GL: GL, GR: GR)
             controls.append(control)
             str += control.str ?? ""
             continue
         }
-        index += 1 // 制御コード分
+        try wrapper.skip(1) // 制御コード分
         switch code {
         case .NULL:
             controls.append(Control(code))
@@ -85,22 +86,20 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
             controls.append(Control(code))
             GL = UnsafeMutablePointer<MFMode>(&G0)
         case .PAPF:
-            controls.append(Control(code, payload: [bytes[index]]))
-            index += 1
+            controls.append(Control(code, payload: try wrapper.take(1)))
         case .CAN:
             controls.append(Control(code))
         case .SS2:
-            let control = getChar(bytes, index: &index, mode: G2, code: .SS2)
+            let control = try getChar(wrapper, mode: G2, code: .SS2)
             controls.append(control)
             str += control.str ?? ""
         case .ESC:
-            let control = ESC(bytes, index: &index)
+            let control = try ESC(wrapper)
             controls.append(control)
         case .APS:
-            controls.append(Control(code, payload: [bytes[index], bytes[index+1]]))
-            index += 2
+            controls.append(Control(code, payload: try wrapper.take(2)))
         case .SS3:
-            let control = getChar(bytes, index: &index, mode: G3, code: .SS3)
+            let control = try getChar(wrapper, mode: G3, code: .SS3)
             controls.append(control)
             str += control.str ?? ""
         case .RS:
@@ -134,63 +133,50 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
         case .NSZ:
             controls.append(Control(code))
         case .SZX:
-            controls.append(Control(code, payload: [bytes[index]]))
-            index += 1
+            controls.append(Control(code, payload: try wrapper.take(1)))
         case .COL:
-            if bytes[index] < 0x40 {
-                controls.append(Control(code, payload: [bytes[index], bytes[index+1]]))
-                index += 2
+            if try wrapper.get(doMove: false) < 0x40 {
+                controls.append(Control(code, payload: try wrapper.take(2)))
             } else {
-                controls.append(Control(code, payload: [bytes[index]]))
-                index += 1
+                controls.append(Control(code, payload: try wrapper.take(1)))
             }
         case .FLC:
-            controls.append(Control(code, payload: [bytes[index]]))
-            index += 1
+            controls.append(Control(code, payload: try wrapper.take(1)))
         case .CDC:
-            if bytes[index] < 0x40 {
-                controls.append(Control(code, payload: [bytes[index], bytes[index+1]]))
-                index += 2
+            if try wrapper.get(doMove: false) < 0x40 {
+                controls.append(Control(code, payload: try wrapper.take(2)))
             } else {
-                controls.append(Control(code, payload: [bytes[index]]))
-                index += 1
+                controls.append(Control(code, payload: try wrapper.take(1)))
             }
         case .POL:
-            controls.append(Control(code, payload: [bytes[index]]))
-            index += 1
+            controls.append(Control(code, payload: try wrapper.take(1)))
         case .WMM:
-            controls.append(Control(code, payload: [bytes[index]]))
-            index += 1
+            controls.append(Control(code, payload: try wrapper.take(1)))
         case .MACRO:
             // ToDo:
             fatalError("マクロよくわからん")
-            controls.append(Control(code, payload: [bytes[index]]))
-            index += 1
+            controls.append(Control(code, payload: try wrapper.take(1)))
         case .HLC:
-            controls.append(Control(code, payload: [bytes[index]]))
-            index += 1
+            controls.append(Control(code, payload: try wrapper.take(1)))
         case .RPC:
-            controls.append(Control(code, payload: [bytes[index]]))
-            index += 1
+            controls.append(Control(code, payload: try wrapper.take(1)))
         case .SPL:
             controls.append(Control(code))
         case .STL:
             controls.append(Control(code))
         case .CSI:
-            let control = CSI(bytes, index: &index)
+            let control = try CSI(wrapper)
             controls.append(control)
         case .TIME:
-            let param1 = bytes[index]
+            let param1 = try wrapper.get()
             // 処理待ち: 0x20
             if param1 == 0x20 {
-                controls.append(Control(code, payload: [bytes[index+1]]))
-                index += 2
+                controls.append(Control(code, payload: try wrapper.take(1)))
                 continue
             }
             // 時刻制御モード(TMD)
             assert(param1 == 0x28, "時刻制御モードのパラメータ1がおかしい: \(String(format: "0x%02x", param1))")
-            controls.append(Control(code, payload: [param1, bytes[index+1]]))
-            index += 2
+            controls.append(Control(code, payload: [param1, try wrapper.get()]))
         case .CHAR:
             fatalError("command: \(code), code: \(String(format: "0x%02x", byte)), 出力用なので不正")
         case .DRCS:
@@ -204,23 +190,22 @@ func Analyze(_ bytes: [UInt8]) -> Unit {
 func setMode(src: MFMode, dist: inout MFMode) {
     dist = src
 }
-func getChar(_ bytes: [UInt8], index: inout Int, GL: UnsafeMutablePointer<MFMode>, GR: UnsafeMutablePointer<MFMode>) -> Control {
-    let c = bytes[index]
+func getChar(_ wrapper: ByteArray, GL: UnsafeMutablePointer<MFMode>, GR: UnsafeMutablePointer<MFMode>) throws -> Control {
+    let c = try wrapper.get(doMove: false)
     if c < 0x7F {
         // GL符号領域
-        let control = getChar(bytes, index: &index, mode: GL.pointee)
+        let control = try getChar(wrapper, mode: GL.pointee)
         return control
     } else {
         // GR符号領域
-        let control = getChar(bytes, index: &index, mode: GR.pointee)
+        let control = try getChar(wrapper, mode: GR.pointee)
         return control
     }
 }
-func getChar(_ bytes: [UInt8], index: inout Int, mode: MFMode, code: ControlCode = .CHAR) -> Control {
+func getChar(_ wrapper: ByteArray, mode: MFMode, code: ControlCode = .CHAR) throws -> Control {
     //print("\(String(format: "%02x", bytes[index]))", mode)
-    if index + numericCast(mode.byte) > bytes.count {
-        let control = Control(code, str: "$$$$", payload: [bytes[index]])
-        index += 1
+    if numericCast(mode.byte) > wrapper.count {
+        let control = Control(code, str: "$$$$", payload: try wrapper.take(1))
         return control
     }
     if mode.charSet == .GSet {
@@ -229,30 +214,30 @@ func getChar(_ bytes: [UInt8], index: inout Int, mode: MFMode, code: ControlCode
         }
         switch charTable {
         case .ASCII, .PROP_ASCII:
-            let str = AsciiTable[Int(bytes[index]&0x7F-0x21)]
-            let control = Control(code, str: str, payload: [bytes[index]])
-            index += Int(mode.byte)
+            let byte = try wrapper.get()
+            let str = AsciiTable[Int(byte&0x7F-0x21)]
+            let control = Control(code, str: str, payload: [byte])
             return control
         case .HIRA, .PROP_HIRA:
-            let str = HiraTable[Int(bytes[index]&0x7F-0x21)]
-            let control = Control(code, str: str, payload: [bytes[index]])
-            index += Int(mode.byte)
+            let byte = try wrapper.get()
+            let str = HiraTable[Int(byte&0x7F-0x21)]
+            let control = Control(code, str: str, payload: [byte])
             return control
         case .KANA, .JISX_KANA, .PROP_KANA:
-            let str = KanaTable[Int(bytes[index]&0x7F-0x21)]
-            let control = Control(code, str: str, payload: [bytes[index]])
-            index += Int(mode.byte)
+            let byte = try wrapper.get()
+            let str = KanaTable[Int(byte&0x7F-0x21)]
+            let control = Control(code, str: str, payload: [byte])
             return control
         case .KANJI, .JIS_KANJI1, .JIS_KANJI2, .KIGOU:
-            let str = jisToUtf16(bytes[index]&0x7F, bytes[index+1]&0x7F)
-            let control = Control(code, str: str, payload: [bytes[index], bytes[index+1]])
-            index += Int(mode.byte)
+            let byte1 = try wrapper.get()
+            let byte2 = try wrapper.get()
+            let str = jisToUtf16(byte1&0x7F, byte2&0x7F)
+            let control = Control(code, str: str, payload: [byte1, byte2])
             return control
         case .MOSAIC_A, .MOSAIC_B, .MOSAIC_C, .MOSAIC_D:
             // ToDo
             let str = "%%%%"
-            let control = Control(code, str: str, payload: [bytes[index]])
-            index += Int(mode.byte)
+            let control = Control(code, str: str, payload: try wrapper.take(Int(mode.byte)))
             return control
         default:
             fatalError("まだだよ。 \(mode)")
@@ -266,207 +251,206 @@ func getChar(_ bytes: [UInt8], index: inout Int, mode: MFMode, code: ControlCode
             // 2byte DRCS
             // ToDo
             let str = "####"
-            let control = Control(code, str: str, payload: [bytes[index], bytes[index+1]])
-            index += Int(mode.byte)
+            let control = Control(code, str: str, payload: try wrapper.take(Int(mode.byte)))
             return control
         case .DRCS_1, .DRCS_2, .DRCS_3, .DRCS_4, .DRCS_5, .DRCS_6, .DRCS_7, .DRCS_8, .DRCS_9, .DRCS_10, .DRCS_11, .DRCS_12, .DRCS_13, .DRCS_14, .DRCS_15:
             // 1byte DRCS
             // ToDo
             let str = "####"
-            let control = Control(code, str: str, payload: [bytes[index]])
-            index += Int(mode.byte)
+            let control = Control(code, str: str, payload: try wrapper.take(Int(mode.byte)))
             return control
         case .MACRO:
-            _ = Analyze(DefaultMacro[Int(bytes[index]&0x0F)])
-            let control = Control(code, str: "", payload: [bytes[index]])
-            index += Int(mode.byte)
+            let byte = try wrapper.get()
+            _ = try Analyze(DefaultMacro[Int(byte&0x0F)])
+            let control = Control(code, str: "", payload: [byte])
             return control
         default:
             fatalError("まだだよ。 \(mode)")
         }
     }
 }
-func ESC(_ bytes: [UInt8], index: inout Int) -> Control {
-    let param = bytes[index]
+func ESC(_ wrapper: ByteArray) throws -> Control {
+    let bytes = try wrapper.clone().take()
+    let param = bytes[0]
     if param == 0x6E {
         // G2をGLに割り当てる
         GL = UnsafeMutablePointer<MFMode>(&G2)
-        index += 1
+        try wrapper.skip(1)
         return Control(.ESC, payload: [param])
     } else if param == 0x6F {
         // G3をGLに割り当てる
         GL = UnsafeMutablePointer<MFMode>(&G3)
-        index += 1
+        try wrapper.skip(1)
         return Control(.ESC, payload: [param])
     } else if param == 0x7E {
         // G1をGRに割り当てる
         GR = UnsafeMutablePointer<MFMode>(&G1)
-        index += 1
+        try wrapper.skip(1)
         return Control(.ESC, payload: [param])
     } else if param == 0x7D {
         // G2をGRに割り当てる
         GR = UnsafeMutablePointer<MFMode>(&G2)
-        index += 1
+        try wrapper.skip(1)
         return Control(.ESC, payload: [param])
     } else if param == 0x7C {
         // G3をGRに割り当てる
         GR = UnsafeMutablePointer<MFMode>(&G3)
-        index += 1
+        try wrapper.skip(1)
         return Control(.ESC, payload: [param])
     }
-    if bytes[index] == 0x24 && bytes[index+1] > 0x2F {
+    if bytes[0] == 0x24 && bytes[1] > 0x2F {
         // GセットをG0に割り当てる(2byte
-        let param2 = bytes[index+1]
+        let param2 = bytes[1]
         guard let mode = MFMode(charSet: .GSet, charTable: param2, byte: 2) else {
             fatalError("未定義のテーブル1: \(String(format: "%02x", param2))")
         }
         setMode(src: mode, dist: &G0)
-        index += 2
+        try wrapper.skip(2)
         return Control(.ESC, payload: [param, param2])
-    } else if bytes[index] == 0x24 && bytes[index+1] == 0x28 && bytes[index+2] == 0x20 {
+    } else if bytes[0] == 0x24 && bytes[1] == 0x28 && bytes[2] == 0x20 {
         // DRCSをG0に割り当てる(2byte
-        let param4 = bytes[index+3]
+        let param4 = bytes[3]
         guard let mode = MFMode(charSet: .DRCS, charTable: param4, byte: 2) else {
             fatalError("未定義のテーブル2: \(String(format: "%02x", param4))")
         }
         setMode(src: mode, dist: &G0)
-        index += 4
+        try wrapper.skip(4)
         return Control(.ESC, payload: [param, 0x28, 0x20, param4])
-    } else if bytes[index] == 0x24 && bytes[index+1] == 0x29 && bytes[index+2] == 0x20 {
+    } else if bytes[0] == 0x24 && bytes[1] == 0x29 && bytes[2] == 0x20 {
         // DRCSをG1に割り当てる(2byte
-        let param4 = bytes[index+3]
+        let param4 = bytes[3]
         guard let mode = MFMode(charSet: .DRCS, charTable: param4, byte: 2) else {
             fatalError("未定義のテーブル3: \(String(format: "%02x", param4))")
         }
         setMode(src: mode, dist: &G1)
-        index += 4
+        try wrapper.skip(4)
         return Control(.ESC, payload: [param, 0x29, 0x20, param4])
-    } else if bytes[index] == 0x24 && bytes[index+1] == 0x29 {
+    } else if bytes[0] == 0x24 && bytes[1] == 0x29 {
         // GセットをG1に割り当てる(2byte
-        let param3 = bytes[index+2]
+        let param3 = bytes[2]
         guard let mode = MFMode(charSet: .GSet, charTable: param3, byte: 2) else {
             fatalError("未定義のテーブル4: \(String(format: "%02x", param3))")
         }
         setMode(src: mode, dist: &G1)
-        index += 3
+        try wrapper.skip(3)
         return Control(.ESC, payload: [param, 0x28, param3])
-    } else if bytes[index] == 0x24 && bytes[index+1] == 0x2A && bytes[index+2] == 0x20 {
+    } else if bytes[0] == 0x24 && bytes[1] == 0x2A && bytes[2] == 0x20 {
         // DRCSをG2に割り当てる(2byte
-        let param4 = bytes[index+3]
+        let param4 = bytes[3]
         guard let mode = MFMode(charSet: .DRCS, charTable: param4, byte: 2) else {
             fatalError("未定義のテーブル5: \(String(format: "%02x", param4))")
         }
         setMode(src: mode, dist: &G2)
-        index += 4
+        try wrapper.skip(4)
         return Control(.ESC, payload: [param, 0x2A, 0x20, param4])
-    } else if bytes[index] == 0x24 && bytes[index+1] == 0x2A {
+    } else if bytes[0] == 0x24 && bytes[1] == 0x2A {
         // GセットをG2に割り当てる(2byte
-        let param3 = bytes[index+2]
+        let param3 = bytes[2]
         guard let mode = MFMode(charSet: .GSet, charTable: param3, byte: 2) else {
             fatalError("未定義のテーブル6: \(String(format: "%02x", param3))")
         }
         setMode(src: mode, dist: &G2)
-        index += 3
+        try wrapper.skip(3)
         return Control(.ESC, payload: [param, 0x2A, param3])
-    } else if bytes[index] == 0x24 && bytes[index+1] == 0x2B && bytes[index+2] == 0x20 {
+    } else if bytes[0] == 0x24 && bytes[1] == 0x2B && bytes[2] == 0x20 {
         // DRCSをG3に割り当てる(2byte
-        let param4 = bytes[index+3]
+        let param4 = bytes[3]
         guard let mode = MFMode(charSet: .DRCS, charTable: param4, byte: 2) else {
             fatalError("未定義のテーブル7: \(String(format: "%02x", param4))")
         }
         setMode(src: mode, dist: &G3)
-        index += 4
+        try wrapper.skip(4)
         return Control(.ESC, payload: [param, 0x2B, 0x20, param4])
-    } else if bytes[index] == 0x24 && bytes[index+1] == 0x2B {
+    } else if bytes[0] == 0x24 && bytes[1] == 0x2B {
         // GセットをG3に割り当てる(2byte
-        let param3 = bytes[index+2]
+        let param3 = bytes[2]
         guard let mode = MFMode(charSet: .GSet, charTable: param3, byte: 2) else {
             fatalError("未定義のテーブル8: \(String(format: "%02x", param3))")
         }
         setMode(src: mode, dist: &G3)
-        index += 3
+        try wrapper.skip(3)
         return Control(.ESC, payload: [param, 0x2B, param3])
-    } else if bytes[index] == 0x28 && bytes[index+1] == 0x20 {
+    } else if bytes[0] == 0x28 && bytes[1] == 0x20 {
         // DRCSをG0に割り当てる
-        let param3 = bytes[index+2]
+        let param3 = bytes[2]
         guard let mode = MFMode(charSet: .DRCS, charTable: param3, byte: 1) else {
             fatalError("未定義のテーブル9: \(String(format: "%02x", param3))")
         }
         setMode(src: mode, dist: &G0)
-        index += 3
+        try wrapper.skip(3)
         return Control(.ESC, payload: [param, 0x20, param3])
-    } else if bytes[index] == 0x28 {
+    } else if bytes[0] == 0x28 {
         // GセットをG0に割り当てる
-        let param2 = bytes[index+1]
+        let param2 = bytes[1]
         guard let mode = MFMode(charSet: .GSet, charTable: param2, byte: 1) else {
             fatalError("未定義のテーブル10: \(String(format: "%02x", param2))")
         }
         setMode(src: mode, dist: &G0)
-        index += 2
+        try wrapper.skip(2)
         return Control(.ESC, payload: [param, param2])
-    } else if bytes[index] == 0x29 && bytes[index+1] == 0x20 {
+    } else if bytes[0] == 0x29 && bytes[1] == 0x20 {
         // DRCSをG1に割り当てる
-        let param3 = bytes[index+2]
+        let param3 = bytes[2]
         guard let mode = MFMode(charSet: .DRCS, charTable: param3, byte: 1) else {
             fatalError("未定義のテーブル11: \(String(format: "%02x", param3))")
         }
         setMode(src: mode, dist: &G1)
-        index += 3
+        try wrapper.skip(3)
         return Control(.ESC, payload: [param, 0x20, param3])
-    } else if bytes[index] == 0x29 {
+    } else if bytes[0] == 0x29 {
         // GセットをG1に割り当てる
-        let param2 = bytes[index+1]
+        let param2 = bytes[1]
         guard let mode = MFMode(charSet: .GSet, charTable: param2, byte: 1) else {
             fatalError("未定義のテーブル12: \(String(format: "%02x", param2))")
         }
         setMode(src: mode, dist: &G1)
-        index += 2
+        try wrapper.skip(2)
         return Control(.ESC, payload: [param, param2])
-    } else if bytes[index] == 0x2A && bytes[index+1] == 0x20 {
+    } else if bytes[0] == 0x2A && bytes[1] == 0x20 {
         // DRCSをG2に割り当てる
-        let param3 = bytes[index+2]
+        let param3 = bytes[2]
         guard let mode = MFMode(charSet: .DRCS, charTable: param3, byte: 1) else {
             fatalError("未定義のテーブル13: \(String(format: "%02x", param3))")
         }
         setMode(src: mode, dist: &G2)
-        index += 3
+        try wrapper.skip(3)
         return Control(.ESC, payload: [param, 0x20, param3])
-    } else if bytes[index] == 0x2A {
+    } else if bytes[0] == 0x2A {
         // GセットをG2に割り当てる
-        let param2 = bytes[index+1]
+        let param2 = bytes[1]
         guard let mode = MFMode(charSet: .GSet, charTable: param2, byte: 1) else {
             fatalError("未定義のテーブル14: \(String(format: "%02x", param2))")
         }
         setMode(src: mode, dist: &G2)
-        index += 2
+        try wrapper.skip(2)
         return Control(.ESC, payload: [param, param2])
-    } else if bytes[index] == 0x2B && bytes[index+1] == 0x20 {
+    } else if bytes[0] == 0x2B && bytes[1] == 0x20 {
         // DRCSをG3に割り当てる
-        let param3 = bytes[index+2]
+        let param3 = bytes[2]
         guard let mode = MFMode(charSet: .DRCS, charTable: param3, byte: 1) else {
             fatalError("未定義のテーブル15: \(String(format: "%02x", param3))")
         }
         setMode(src: mode, dist: &G3)
-        index += 3
+        try wrapper.skip(3)
         return Control(.ESC, payload: [param, 0x20, param3])
-    } else if bytes[index] == 0x2B {
+    } else if bytes[0] == 0x2B {
         // GセットをG3に割り当てる
-        let param2 = bytes[index+1]
+        let param2 = bytes[1]
         guard let mode = MFMode(charSet: .GSet, charTable: param2, byte: 1) else {
             fatalError("未定義のテーブル16: \(String(format: "%02x", param2))")
         }
         setMode(src: mode, dist: &G3)
-        index += 2
+        try wrapper.skip(2)
         return Control(.ESC, payload: [param, param2])
     }
     fatalError("未定義のパラメータ: \(String(format: "%02x", param))")
 }
-func CSI(_ bytes: [UInt8], index: inout Int) -> Control {
-    let _index = index
+func CSI(_ wrapper: ByteArray) throws -> Control {
     var param = 0
     var command = ""
+    var bytes = try wrapper.clone().take()
     // CSIの最長10byte？
-    for i in index..<index+10 {
+    for i in 0..<10 {
         let c = bytes[i]
         // 中間文字: 0x20
         if c != 0x20 {
@@ -482,8 +466,7 @@ func CSI(_ bytes: [UInt8], index: inout Int) -> Control {
         command = "\(csiChar)"
         break
     }
-    index += param + 2 // param + 中間文字 + 終端文字
-    let control = Control(.CSI, command: command, payload: Array(bytes[_index..<index]))
+    let control = Control(.CSI, command: command, payload: try wrapper.take(param + 2)) // param + 中間文字 + 終端文字
     return control
 }
 

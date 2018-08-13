@@ -38,9 +38,15 @@ extension ShortEventDescriptor : CustomStringConvertible {
             + ")"
     }
     public var eventStr: String {
-        return ARIB8charDecode(eventName).str
+        guard let str = try? ARIB8charDecode(eventName).str else {
+            return ""
+        }
+        return str
     }
     public var textStr: String {
-        return ARIB8charDecode(text).str
+        guard let str = try? ARIB8charDecode(text).str else {
+            return ""
+        }
+        return str
     }
 }

@@ -140,7 +140,7 @@ public func CaptionDecoderMain(data: Data, options: Options) throws -> [Unit] {
             switch dataUnit.dataUnitParameter {
             case 0x20:
                 //printHexDumpForBytes(bytes: dataUnit.payload)
-                var result = ARIB8charDecode(dataUnit)
+                var result = try ARIB8charDecode(dataUnit)
                 result.eventId = presentEventId != nil ? "\(String(format: "%05d", presentEventId!))" : nil
                 result.serviceId = presentServiceId
                 return result
