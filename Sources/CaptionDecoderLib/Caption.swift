@@ -36,7 +36,7 @@ public struct Caption {
     public let dataUnitLoopLength: UInt32          // 24 uimsbf
     public let dataUnit: [DataUnit]                //  5 byte + 1*n byte
     // --- Synchronized_PES_data ---
-    public let CRC_16: UInt16                    // 16 rpchof
+    public let CRC_16: UInt16                      // 16 rpchof
     public let payload: [UInt8]                    //  n byte
     public init?(_ data: Data) throws {
         self.header = try getHeader(data, isPes: true)
@@ -66,6 +66,18 @@ public struct Caption {
             //print("header分のpayloadが足りない")
             return nil
         }
+        // CRC
+        let headerLength = 3 + Int(pesDataPacketHeaderLength) // 3 byte(headerSizeまで) + 可変長分
+        let wrapper_crc = ByteArray(pesHeader.payload)
+        try wrapper_crc.skip(Int(headerLength))
+        let crcBytes = try wrapper_crc.take(pesHeader.payload.count-headerLength-2) // 2 byte(CRC)
+        let crcPayload = UInt16(try wrapper_crc.get(num: 2))
+        if !crc16(crcBytes, crcPayload) {
+            // ToDo:
+            //print("\(String(format: "0x%04x", CRC_16))", "\(String(format: "0x%04x", calcCRC16))")
+            return nil
+        }
+ 
         try wrapper.skip(Int(pesDataPacketHeaderLength)) // 可変長分
         self.dataGroupId = try wrapper.get(doMove: false)>>2
         self.dataGroupVersion = try wrapper.get()&0x03
@@ -111,17 +123,6 @@ public struct Caption {
         } while payloadLength > 0
         self.dataUnit = array
         self.CRC_16 = UInt16(try wrapper.get(num: 2))
-        let headerLength = 3 + Int(pesDataPacketHeaderLength) // 3 byte(headerSizeまで) + 可変長分
-        let wrapper_crc = ByteArray(pesHeader.payload)
-        try wrapper_crc.skip(Int(headerLength))
-        let crcBytes = try wrapper_crc.take(pesHeader.payload.count-headerLength-2) // 2 byte(CRC)
-        let calcCRC16 = crc16(crcBytes)!
-        if CRC_16 != calcCRC16 {
-            // ToDo:
-            fatalError("")
-            //print("\(String(format: "0x%04x", CRC_16))", "\(String(format: "0x%04x", calcCRC16))")
-            return nil
-        }
     }
 }
 extension Caption : CustomStringConvertible {

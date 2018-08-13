@@ -19,6 +19,7 @@ public struct EventInformationTable {
     public let lastTableId: UInt8               //  8  uimsbf
     public let payload: [UInt8]                 //  n  byte
     public let events: [Event]
+    public let CRC_32: UInt32
     public init?(_ data: Data, _ _header: TransportPacket? = nil) throws {
         self.header = try getHeader(data, _header)
         self.programAssociationSection = try ProgramAssociationSection(data, header)
@@ -31,6 +32,17 @@ public struct EventInformationTable {
         if bytes.count < Int(programAssociationSection.sectionLength)-5 {
             return nil
         }
+        // CRC
+        let headerLength = 3 // 3 byte(sectionLengthまで)
+        let wrapper_crc = ByteArray(header.payload)
+        let crcBytes = try wrapper_crc.take(Int(programAssociationSection.sectionLength) + headerLength - 4)
+        let crcPayload = UInt32(try wrapper_crc.get(num: 4))
+        if !crc32(crcBytes, crcPayload) {
+            // ToDo:
+            //print("\(String(format: "0x%04x", CRC_16))", "\(String(format: "0x%04x", calcCRC32))")
+            return nil
+        }
+
         let wrapper = ByteArray(bytes)
         self.transportStreamId = UInt16(try wrapper.get(num: 2))
         self.originalNetworkId = UInt16(try wrapper.get(num: 2))
@@ -55,6 +67,7 @@ public struct EventInformationTable {
             }
         } while payloadLength > 12
         self.events = array
+        self.CRC_32 = UInt32(try wrapper.get(num: 4))
     }
 }
 extension EventInformationTable : CustomStringConvertible {
@@ -112,7 +125,6 @@ public struct Event {
     public let freeCAMode: UInt8                //  1  bslbf
     public let descriptorsLoopLength: UInt16    // 12  uimsbf
     public let descriptors: [EventDescriptor]
-    // ToDo: CRC
     public init(_ wrapper: ByteArray) throws {
         self.eventId = UInt16(try wrapper.get(num: 2))
         self.startTime = UInt64(try wrapper.get(num: 5))
