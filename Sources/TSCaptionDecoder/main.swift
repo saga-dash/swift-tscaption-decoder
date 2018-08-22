@@ -1,6 +1,6 @@
 //
 //  main.swift
-//  swift-caption-decoder
+//  TSCaptionDecoder
 //
 //  Created by saga-dash on 2018/07/05.
 //
@@ -9,7 +9,7 @@
 import Foundation
 import Commander
 
-import CaptionDecoderLib
+import TSCaptionDecoderLib
 
 #if os(Linux)
 func autoreleasepool(_ code: () -> ()) {
@@ -78,7 +78,7 @@ let main = command(
                 exit(-1)
             }
             do {
-                let result = try CaptionDecoderMain(data: data, options: options)
+                let result = try TSCaptionDecoderMain(data: data, options: options)
                 for unit in result {
                     //print(unit.str)
                     let encoder = JSONEncoder()

@@ -1,6 +1,6 @@
 // 
-//  CaptionDecoder.swift
-//  CaptionDecoder
+//  TSCaptionDecoder.swift
+//  TSCaptionDecoder
 //
 //  Created by saga-dash on 2018/07/10.
 //
@@ -23,7 +23,7 @@ var blackList: [String] = [
     "いつでも見ることができるＮＨＫの最新のニュース",
 ]
 
-public func CaptionDecoderMain(data: Data, options: Options) throws -> [Unit] {
+public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] {
     if data.count != LENGTH {
         return []
     }

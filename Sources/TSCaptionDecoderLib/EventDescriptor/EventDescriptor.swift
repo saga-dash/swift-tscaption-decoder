@@ -1,6 +1,6 @@
 // 
 //  EventDescriptor.swift
-//  CaptionDecoderLib
+//  TSCaptionDecoderLib
 //
 //  Created by saga-dash on 2018/07/31.
 //

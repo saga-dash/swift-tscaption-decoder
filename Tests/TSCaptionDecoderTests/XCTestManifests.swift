@@ -1,6 +1,6 @@
 //
 //  XCTestManifests.swift
-//  CaptionDecoder
+//  TSCaptionDecoder
 //
 //  Created by saga-dash on 2018/07/10.
 //

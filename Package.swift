@@ -4,9 +4,9 @@
 import PackageDescription
 
 let package = Package(
-    name: "CaptionDecoder",
+    name: "TSCaptionDecoder",
     products: [
-        .library(name: "CaptionDecoder", targets: ["CaptionDecoder"])
+        .library(name: "TSCaptionDecoder", targets: ["TSCaptionDecoder"])
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -17,17 +17,17 @@ let package = Package(
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
         // Targets can depend on other targets in this package, and on products in packages which this package depends on.
         .target(
-            name: "CaptionDecoder",
-            dependencies: ["CaptionDecoderLib", "Commander"]),
+            name: "TSCaptionDecoder",
+            dependencies: ["TSCaptionDecoderLib", "Commander"]),
         .target(
-            name: "CaptionDecoderLib",
+            name: "TSCaptionDecoderLib",
             dependencies: ["ByteArrayWrapper"]),
         .target(
             name: "ByteArrayWrapper",
             dependencies: []),
         .testTarget(
-            name: "CaptionDecoderTests",
-            dependencies: ["CaptionDecoderLib"]),
+            name: "TSCaptionDecoderTests",
+            dependencies: ["TSCaptionDecoderLib"]),
         .testTarget(
             name: "ByteArrayWrapperTests",
             dependencies: ["ByteArrayWrapper"]),

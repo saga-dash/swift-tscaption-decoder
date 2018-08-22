@@ -1,6 +1,6 @@
 // 
 //  ProgramMapTable.swift
-//  swift-caption-decoder
+//  TSCaptionDecoderLib
 //
 //  Created by saga-dash on 2018/07/05.
 //
