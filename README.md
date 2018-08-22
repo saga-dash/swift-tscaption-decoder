@@ -1,4 +1,4 @@
-# swift-caption-decoder
+# swift-tscaption-decoder
 
 A description of this package.
 
@@ -14,22 +14,22 @@ swift build -c release
 
 - ファイルを指定して実行
 ```
-.build/release/CaptionDecoder -c subtitle -f ./a.ts
+.build/release/TSCaptionDecoder -c subtitle -f ./a.ts
 ```
 - 標準入力(未検証)
 ```
-recpt1 --b25 --strip 27 - - | .build/release/CaptionDecoder -c subtitle
+recpt1 --b25 --strip 27 - - | .build/release/TSCaptionDecoder -c subtitle
 or
-cat ./a.ts | .build/release/CaptionDecoder -c teletext
+cat ./a.ts | .build/release/TSCaptionDecoder -c teletext
 ```
 
 ## Help
 
 ```
-.build/release/CaptionDecoder --help
+.build/release/TSCaptionDecoder --help
 Usage:
 
-    $ .build/release/CaptionDecoder
+    $ .build/release/TSCaptionDecoder
 
 Options:
     -f  --file # ない場合標準入力を待機
