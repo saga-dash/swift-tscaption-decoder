@@ -24,7 +24,7 @@ public struct ContentDescriptor: EventDescriptor {
             array.append(contentSub)
             let sub = contentSub.length // 2 byte 固定長(ContentDescriptorSub)
             payloadLength -= sub
-        } while payloadLength > 2
+        } while payloadLength >= 2
         self.contents = array
     }
 }
