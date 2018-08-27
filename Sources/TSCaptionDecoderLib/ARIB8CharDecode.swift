@@ -171,7 +171,7 @@ func Analyze(_ bytes: [UInt8]) throws -> Unit {
             let param1 = try wrapper.get()
             // 処理待ち: 0x20
             if param1 == 0x20 {
-                controls.append(Control(code, payload: try wrapper.take(1)))
+                controls.append(Control(code, payload: [param1, try wrapper.get()]))
                 continue
             }
             // 時刻制御モード(TMD)
