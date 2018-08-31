@@ -23,10 +23,10 @@ public struct EventInformationTable {
     public init?(_ data: Data, _ _header: TransportPacket? = nil) throws {
         self.header = try getHeader(data, _header)
         self.programAssociationSection = try ProgramAssociationSection(data, header)
-        let tableId = programAssociationSection.tableId
-        if tableId < 0x4E || 0x6F < tableId {
+        if programAssociationSection.sectionLength <= 0 {
             return nil
         }
+        let tableId = programAssociationSection.tableId
         let bytes = programAssociationSection.payload
         // 5 byte(programAssociationSection終わりまで)
         if bytes.count < Int(programAssociationSection.sectionLength)-5 {
@@ -40,6 +40,13 @@ public struct EventInformationTable {
         if !crc32(crcBytes, crcPayload) {
             // ToDo:
             //print("\(String(format: "0x%04x", CRC_16))", "\(String(format: "0x%04x", calcCRC32))")
+            return nil
+        }
+        if tableId < 0x4E || 0x6F < tableId {
+            return nil
+        }
+        if tableId != 0x4E {
+            // tableId: 0x004E == P/F
             return nil
         }
 
