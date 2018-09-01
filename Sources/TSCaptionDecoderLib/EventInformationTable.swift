@@ -56,9 +56,6 @@ public struct EventInformationTable {
         self.segmentLastSectionNumber = try wrapper.get()
         self.lastTableId = try wrapper.get()
         self.payload = try wrapper.clone().take()
-        if Int(programAssociationSection.sectionLength) - 11 - 4 < 0 {
-            return nil
-        }
         var payloadLength = Int(programAssociationSection.sectionLength)
             - 11 // EIT(sessionLength以下の固定分) 5 + 6 byte
             - 4 // CRC_32
@@ -142,16 +139,12 @@ public struct Event {
         var payloadLength = Int(descriptorsLoopLength)
         var array: [EventDescriptor] = []
         repeat {
-            do {
-                guard let descriptor = try convertEventDescriptor(wrapper) else {
-                    break
-                }
-                array.append(descriptor)
-                let sub = descriptor.length // 可変長(EventDescriptor)
-                payloadLength -= sub
-            } catch {
+            guard let descriptor = try convertEventDescriptor(wrapper) else {
                 break
             }
+            array.append(descriptor)
+            let sub = descriptor.length // 可変長(EventDescriptor)
+            payloadLength -= sub
         } while payloadLength > 0
         self.descriptors = array
     }
