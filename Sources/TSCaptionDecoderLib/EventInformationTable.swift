@@ -42,11 +42,8 @@ public struct EventInformationTable {
             //print("\(String(format: "0x%04x", CRC_16))", "\(String(format: "0x%04x", calcCRC32))")
             return nil
         }
-        if tableId < 0x4E || 0x6F < tableId {
-            return nil
-        }
-        if tableId != 0x4E {
-            // tableId: 0x004E == P/F
+        if tableId < 0x4E || 0x5F < tableId  || tableId == 0x4F {
+            // 他ストリーム
             return nil
         }
 

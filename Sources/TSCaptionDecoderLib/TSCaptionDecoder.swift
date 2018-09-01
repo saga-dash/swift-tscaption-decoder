@@ -180,11 +180,7 @@ public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] 
         defer {
             stock.removeValue(forKey: header.PID)
         }
-        // present(実行中)
-        if !eit.isPresent {
-            return []
-        }
-        guard let event = eit.events.first else {
+        guard let event = eit.events.first(where: {$0.isOnAir(tsDate)}) else {
             // eventを解析出来なかった
             return []
         }
