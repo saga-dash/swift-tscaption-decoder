@@ -152,7 +152,7 @@ public struct Event {
             } catch {
                 break
             }
-        } while payloadLength > 4 // 4 byte(CRC)
+        } while payloadLength > 0
         self.descriptors = array
     }
 }
