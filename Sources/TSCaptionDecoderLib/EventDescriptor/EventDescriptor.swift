@@ -26,10 +26,11 @@ extension EventDescriptor {
 public struct UnhandledDescriptor: EventDescriptor {
     public var descriptorTag: UInt8
     public var descriptorLength: UInt8
+    public var payload: [UInt8]
     public init(_ wrapper: ByteArray) throws {
         self.descriptorTag = try wrapper.get()
         self.descriptorLength = try wrapper.get()
-        try wrapper.skip(Int(descriptorLength))
+        self.payload = try wrapper.take(Int(descriptorLength))
         self.name = "Unhandled"
     }
     public var name: String
@@ -42,6 +43,7 @@ extension UnhandledDescriptor : CustomStringConvertible {
     public var description: String {
         return "\(name)(descriptorTag: \(String(format: "0x%02x", descriptorTag))"
             + ", descriptorLength: \(String(format: "0x%02x", descriptorLength))"
+            + ", payload: \(payload)"
             + ")"
     }
 }
