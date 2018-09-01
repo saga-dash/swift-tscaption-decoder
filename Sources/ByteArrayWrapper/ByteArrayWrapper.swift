@@ -28,8 +28,8 @@ public class ByteArray {
             }
             return Array(bytes[index..<bytes.count])
         }
-        if num < 1 {
-            throw ByteArrayError.invalidArgument("引数は1以上を指定")
+        if num < 0 {
+            throw ByteArrayError.invalidArgument("引数は0以上を指定")
         }
         if bytes.count < index + num {
             throw ByteArrayError.outOfRange()
