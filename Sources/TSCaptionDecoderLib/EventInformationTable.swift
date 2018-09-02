@@ -56,6 +56,11 @@ public struct EventInformationTable {
         var payloadLength = Int(programAssociationSection.sectionLength)
             - 11 // EIT(sessionLength以下の固定分) 5 + 6 byte
             - 4 // CRC_32
+        if payloadLength == 0 {
+            self.events = []
+            self.CRC_32 = crcPayload
+            return
+        }
         var array: [Event] = []
         repeat {
             do {
