@@ -63,15 +63,17 @@ public struct EventInformationTable {
         }
         var array: [Event] = []
         repeat {
+            let index = wrapper.getIndex()
             do {
                 let event = try Event(wrapper)
                 array.append(event)
                 let sub = event.length // 可変長(Event)
                 payloadLength -= sub
             } catch {
+                try wrapper.setIndex(index + payloadLength)
                 break
             }
-        } while payloadLength > 12
+        } while payloadLength > 0
         self.events = array
         self.CRC_32 = UInt32(try wrapper.get(num: 4))
     }
