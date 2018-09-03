@@ -17,11 +17,6 @@ var stock: Dictionary<UInt16, Data> = [:]
 var presentEventId: UInt16? = nil
 var presentServiceId: String? = nil
 var tsDate: Date = Date()
-var blackList: [String] = [
-    "お住まいの地域の詳しい気象情報、全国の天気ほか",
-    "デジタル放送のコピー制御（著作権保護）システムとＢ－ＣＡＳカードなどについての説明と問い合わせなど",
-    "いつでも見ることができるＮＨＫの最新のニュース",
-]
 
 public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] {
     if data.count != LENGTH {
@@ -172,7 +167,7 @@ public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] 
         if header.payloadUnitStartIndicator != 0x01 {
             return []
         }
-        guard let eit = try EventInformationTable(data) else {
+        guard let eit = try EventInformationTable4Bug(data) else {
             // データが足りていなければ、ストックする
             stock[header.PID] = data
             return []
@@ -180,16 +175,12 @@ public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] 
         defer {
             stock.removeValue(forKey: header.PID)
         }
+        // present(実行中)
+        if !eit.isPresent {
+            return []
+        }
         guard let event = eit.events.first(where: {$0.isOnAir(tsDate)}) else {
             // eventを解析出来なかった
-            return []
-        }
-        // 番組表(0x4E)記述子を取得
-        guard let shortDescriptor = event.shortDescriptor else {
-            return []
-        }
-        // S1のガイド用番組を除外
-        if blackList.contains(shortDescriptor.textStr) {
             return []
         }
         // ToDo: スクランブル時の処理
