@@ -162,7 +162,7 @@ public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] 
         return result
     }
     // EIT
-    else if header.PID == 0x0012 || header.PID == 0x0026 || header.PID == 0x0027 {
+    else if header.PID == 0x0012 {// || header.PID == 0x0026 || header.PID == 0x0027 {
         // 固定用: 0x0012, ワンセグ受信用: 0x0027
         if header.payloadUnitStartIndicator != 0x01 {
             return []
