@@ -97,13 +97,13 @@ extension EventInformationTable4Bug {
     }
     public var serviceName: String {
         switch serviceId {
-        case 1024, 1025:
+        case 1024://, 1025:
             return "g1"
-        case 1032, 1033, 1034:
+        case 1032://, 1033, 1034:
             return "e1"
-        case 101, 102:
+        case 101://, 102:
             return "s1"
-        case 103, 104:
+        case 103://, 104:
             return "s3"
         default:
             return ""
