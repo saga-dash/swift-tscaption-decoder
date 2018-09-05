@@ -79,4 +79,29 @@ final class TransportPacketTests: XCTestCase {
             }
         })
     }
+    func testEIT() throws {
+        let bytes: [UInt8] = [71, 64, 39, 28, 0, 78, 240, 198, 5, 128, 227, 0, 2, 127, 224, 127, 224, 2, 78, 48, 232, 227, 248, 22, 80, 0, 1, 16, 0, 0, 171, 77, 158, 106, 112, 110, 18, 29, 75, 29, 101, 249, 29, 57, 33, 33, 29, 55, 29, 86, 14, 53, 15, 59, 126, 135, 34, 38, 69, 108, 75, 76, 254, 75, 76, 78, 38, 33, 33, 66, 103, 49, 43, 206, 170, 189, 236, 33, 33, 55, 89, 50, 124, 242, 33, 33, 34, 38, 29, 52, 29, 95, 61, 80, 183, 66, 80, 58, 118, 206, 56, 61, 62, 108, 33, 33, 69, 108, 53, 126, 254, 63, 121, 74, 66, 54, 104, 33, 33, 34, 38, 51, 88, 57, 59, 172, 29, 36, 29, 100, 192, 200, 56, 64, 239, 236, 191, 233, 33, 68, 33, 33, 56, 43, 70, 40, 185, 202, 59, 82, 201, 226, 206, 27, 124, 181, 164, 243, 33, 33, 34, 38, 67, 102, 55, 81, 33, 33, 66, 103, 61, 56, 57, 103, 33, 33, 64, 36, 51, 38, 25, 78, 68, 65, 25, 55, 25, 36]
+
+        let data = Data(bytes: bytes)
+        let header = try TransportPacket(data)
+        print(header)
+        guard let eit = try EventInformationTable4Bug(data) else {
+            XCTFail()
+            return
+        }
+        // present(実行中)
+        if !eit.isPresent {
+            XCTFail()
+        }
+        guard let event = eit.events.first else {
+            // eventを解析出来なかった
+            XCTFail()
+            return
+        }
+        // ToDo: スクランブル時の処理
+        //print(eit.header)
+        //printHexDumpForBytes(data)
+        //print(eit)
+        print(event)
+    }
 }
