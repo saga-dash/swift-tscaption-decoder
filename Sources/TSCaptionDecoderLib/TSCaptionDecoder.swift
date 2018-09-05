@@ -175,6 +175,10 @@ public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] 
         defer {
             stock.removeValue(forKey: header.PID)
         }
+        // サブチャンネルを除外
+        if eit.serviceName == "" {
+            return []
+        }
         // present(実行中)
         if !eit.isPresent {
             return []
