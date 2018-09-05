@@ -187,6 +187,12 @@ public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] 
             // eventを解析出来なかった
             return []
         }
+        // 番組表(0x4E)記述子を取得
+        guard let _ = event.shortDescriptor else {
+            presentEventId = event.eventId
+            presentServiceId = eit.serviceName
+            return []
+        }
         // ToDo: スクランブル時の処理
         //print(eit.header)
         //printHexDumpForBytes(data)
