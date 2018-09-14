@@ -53,4 +53,36 @@ public func convertARIBTime(_ time: UInt32) -> DateComponents {
     let date = DateComponents(hour: hour, minute: minute, second: second)
     return date
 }
-
+// 33bit -> timeString
+public func convertTimeStamp(_ time: UInt64?) -> String? {
+    guard let time = time else {
+        return nil
+    }
+    var ts = Double(time)
+    var sec = floor(ts/90000)
+    ts -= sec * 90000
+    var min = floor(sec/60)
+    sec -= min * 60
+    let hour = floor(min/60)
+    min -= hour * 60
+    return "\(String(format: "%02.0f", hour)):\(String(format: "%02.0f", min)):\(String(format: "%02.0f", sec)).\(String(format: "%03.0f", ts/90))"
+}
+// 6byte -> PCR
+public func pickPCR(_ time: [UInt8]?) -> UInt64? {
+    guard let time = time else {
+        return nil
+    }
+    //print("0x" + time.map({"\(String(format: "%02x", $0))"}).joined(separator: ""))
+    let pcr33: UInt64 = UInt64(time[0])<<25 | UInt64(time[1])<<17 | UInt64(time[2])<<9 | UInt64(time[3])<<1 | UInt64(time[4]&0x80)>>7
+    let _: UInt16 = UInt16(time[4]&0x01)<<8 | UInt16(time[5]) //pcr9
+    return pcr33
+}
+// 5byte -> PTS, DTS
+public func pickTimeStamp(_ time: [UInt8]?) -> UInt64? {
+    guard let time = time else {
+        return nil
+    }
+    //print("0x" + time.map({"\(String(format: "%02x", $0))"}).joined(separator: ""))
+    let timestamp: UInt64 = UInt64(time[0]&0x0E)<<29 | UInt64(time[1])<<22 | UInt64(time[2]&0xFE)<<14 | UInt64(time[3])<<7 | UInt64(time[4]&0xFE)>>1
+    return timestamp
+}
