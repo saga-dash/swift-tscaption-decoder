@@ -43,7 +43,10 @@ extension TransportPacket {
         return (adaptationFieldControl&0x01)
     }
     public var adaptationField: AdaptationField? {
-        return adaptationFlag == 1 ? AdaptationField(data) : nil
+        if adaptationFlag != 1 {
+            return nil
+        }
+        return try? AdaptationField(data)
     }
     var noPointerField: Bool {
         return adaptationField==nil && (isPes || payloadUnitStartIndicator != 0x01)
@@ -68,17 +71,21 @@ extension TransportPacket {
     }
 }
 public struct AdaptationField {
-    public let adaptationFieldLength: UInt8
-    //public var nonDiscontinuityIndicator: UInt8
-    //public var randomAccessIndicator: UInt8
-    //public var elementaryStreamPriorityIndicator: UInt8
-    //public var flag: UInt8
+    public let data: Data
+    public let adaptationFieldLength: UInt8                 //  8 bit
+    //public var DiscontinuityIndicator: UInt8              //  1 bit
+    //public var randomAccessIndicator: UInt8               //  1 bit
+    //public var elementaryStreamPriorityIndicator: UInt8   //  1 bit
+    public var PCRFlag: UInt8                               //  1 bit
     //public var optionField:
     //public var stuffingByte:
-    public init(_ data: Data) {
+    public init(_ data: Data) throws {
+        self.data = data
         let bytes = [UInt8](data)
-        let offset = 4  // TransportPacket
-        self.adaptationFieldLength = bytes[offset + 0]
+        let wrapper = ByteArray(bytes)
+        try wrapper.skip(4)
+        self.adaptationFieldLength = try wrapper.get()
+        self.PCRFlag = (try wrapper.get()&0x10)>>4
     }
 }
 extension TransportPacket : CustomStringConvertible {
@@ -93,6 +100,31 @@ extension TransportPacket : CustomStringConvertible {
             + ", payloadFlag: \(payloadFlag))"
             + ", length: \(String(format: "0x%02x", length))"
             + ", continuityCounter: \(String(format: "0x%02x", continuityCounter))"
+            + ", PCR: \(PCRStr ?? "")"
             + ")"
+    }
+}
+extension TransportPacket {
+    public var PCR: [UInt8]? {
+        guard let adaptationField = self.adaptationField else {
+            return nil
+        }
+        if adaptationField.PCRFlag == 0x00 {
+            return nil
+        }
+        let bytes = [UInt8](data)
+        let wrapper = ByteArray(bytes)
+        do {
+            try wrapper.skip(4 + 2) // 4byte(TransportPacket) + 2byte(AdaptationField)
+        } catch {
+            return nil
+        }
+        guard let pcr = try? wrapper.take(6) else {
+            return nil
+        }
+        return pcr
+    }
+    public var PCRStr: String? {
+        return convertTimeStamp(pickPCR(PCR))
     }
 }

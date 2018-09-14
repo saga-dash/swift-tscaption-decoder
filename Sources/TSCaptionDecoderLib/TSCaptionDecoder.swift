@@ -12,10 +12,12 @@ import Foundation
 public let LENGTH = 188
 let PES_PRIVATE_DATA = 0x06             // ARIB STD-B24 第三編 表 4-1 伝送方式の種類
 var targetPMTPID: UInt16 = 0xFFFF
+var targetPCRPID: UInt16 = 0xFFFF
 var targetCaptionPID: UInt16 = 0xFFFF
 var stock: Dictionary<UInt16, Data> = [:]
 var presentEventId: UInt16? = nil
 var presentServiceId: String? = nil
+var pcr: [UInt8]? = nil
 var tsDate: Date = Date()
 
 public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] {
@@ -23,6 +25,11 @@ public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] 
         return []
     }
     var header = try TransportPacket(data)
+    if header.PCR != nil && header.PID == targetPCRPID {
+        // PCRPIDはpayloadUnitStartIndicator == 0x00
+        //print(header)
+        pcr = header.PCR
+    }
     var data = data
     // はじめのunitではない&&前のデータがない
     if (header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil) {
@@ -109,6 +116,7 @@ public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] 
             print("字幕無いよ2")
             return []
         }
+        targetPCRPID = pmt.PCR_PID
         targetCaptionPID = stream.elementaryPID
         //print("targetCaptionPID: \(String(format: "0x%04x", targetCaptionPID))")
         return []
@@ -128,7 +136,7 @@ public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] 
             return []
         }
         //printHexDumpForBytes(bytes: caption.payload)
-        //print(caption)
+        //print(caption.pesHeader)
         let result = try caption.dataUnit.map({(dataUnit: DataUnit) -> Unit? in
             // ARIB STD-B24 第一編 第 3 部 表 9-12 データユニットの種類
             // 本文: 0x20, 1バイト DRCS: 0x30, 2バイト DRCS: 0x31
@@ -138,6 +146,7 @@ public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] 
                 var result = try ARIB8charDecode(dataUnit)
                 result.eventId = presentEventId != nil ? "\(String(format: "%05d", presentEventId!))" : nil
                 result.serviceId = presentServiceId
+                result.pts = pickTimeStamp(caption.pesHeader.pts)
                 return result
             case 0x30, 0x31:
                 //print(data.map({String(format: "0x%02x", $0)}).joined(separator: ", "))
@@ -153,6 +162,7 @@ public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] 
                 var result = Unit(str: "", control: controls)
                 result.eventId = presentEventId != nil ? "\(String(format: "%05d", presentEventId!))" : nil
                 result.serviceId = presentServiceId
+                result.pts = pickTimeStamp(caption.pesHeader.pts)
                 return result
             default:
                 print("dataUnit.dataUnitParameter: \(dataUnit.dataUnitParameter)")
