@@ -20,7 +20,7 @@ var presentServiceId: String? = nil
 var pcr: [UInt8]? = nil
 var tsDate: Date = Date()
 
-public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] {
+public func TSCaptionDecoderSub(data: Data, options: Options) throws -> [Unit] {
     if data.count != LENGTH {
         return []
     }
@@ -121,7 +121,89 @@ public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] 
         //print("targetCaptionPID: \(String(format: "0x%04x", targetCaptionPID))")
         return []
     }
-    else if header.PID == targetCaptionPID {
+        // EIT
+    else if header.PID == 0x0012 {// || header.PID == 0x0026 || header.PID == 0x0027 {
+        // 固定用: 0x0012, ワンセグ受信用: 0x0027
+        if header.payloadUnitStartIndicator != 0x01 {
+            return []
+        }
+        guard let eit = try EventInformationTable(data) else {
+            // データが足りていなければ、ストックする
+            stock[header.PID] = data
+            return []
+        }
+        defer {
+            stock.removeValue(forKey: header.PID)
+        }
+        if eit.tableId != 0x4E {
+            return []
+        }
+        // サブチャンネルを除外
+        if eit.serviceName == "" {
+            return []
+        }
+        // present(実行中)
+        if !eit.isPresent {
+            return []
+        }
+        guard let event = eit.events.first(where: {$0.isOnAir(tsDate)}) else {
+            // eventを解析出来なかった
+            return []
+        }
+        // 番組表(0x4E)記述子を取得
+        guard let _ = event.shortDescriptor else {
+            presentEventId = event.eventId
+            presentServiceId = eit.serviceName
+            return []
+        }
+        // ToDo: スクランブル時の処理
+        //print(eit.header)
+        //printHexDumpForBytes(data)
+        //print(eit)
+        print(event)
+        presentEventId = event.eventId
+        presentServiceId = eit.serviceName
+    }
+    return []
+}
+
+public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] {
+    if data.count != LENGTH {
+        return []
+    }
+    var header = try TransportPacket(data, isPes: true)
+    if header.PCR != nil && header.PID == targetPCRPID {
+        // PCRPIDはpayloadUnitStartIndicator == 0x00
+        //print(header)
+        pcr = header.PCR
+    }
+    var data = data
+    // はじめのunitではない&&前のデータがない
+    if (!header.isStartPacket && stock[header.PID] == nil) {
+        return []
+    }
+    // 前のデータと結合
+    if (stock[header.PID] != nil) {
+        // ストックが存在し先頭TSならデータがおかしいので置き換える
+        if header.isStartPacket {
+            stock[header.PID] = data
+        } else {
+            // PIDに対してCounterが正常に加算されているか
+            if isCorrectCounter(stock[header.PID]!, data) {
+                data = stock[header.PID]! + header.payload
+            } else {
+                stock.removeValue(forKey: header.PID)
+                return []
+            }
+        }
+    }
+    header = try TransportPacket(data)
+    if !header.enoughHeaderLength {
+        // データが足りていなければ、ストックする
+        stock[header.PID] = data
+        return []
+    }
+    if header.PID == targetCaptionPID {
         //printHexDumpForBytes(data)
         guard let caption = try Caption(data) else {
             stock[header.PID] = data
@@ -170,46 +252,6 @@ public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] 
             }
         }).filter({$0 != nil}) as! [Unit]
         return result
-    }
-    // EIT
-    else if header.PID == 0x0012 {// || header.PID == 0x0026 || header.PID == 0x0027 {
-        // 固定用: 0x0012, ワンセグ受信用: 0x0027
-        if header.payloadUnitStartIndicator != 0x01 {
-            return []
-        }
-        guard let eit = try EventInformationTable4Bug(data) else {
-            // データが足りていなければ、ストックする
-            stock[header.PID] = data
-            return []
-        }
-        defer {
-            stock.removeValue(forKey: header.PID)
-        }
-        // サブチャンネルを除外
-        if eit.serviceName == "" {
-            return []
-        }
-        // present(実行中)
-        if !eit.isPresent {
-            return []
-        }
-        guard let event = eit.events.first(where: {$0.isOnAir(tsDate)}) else {
-            // eventを解析出来なかった
-            return []
-        }
-        // 番組表(0x4E)記述子を取得
-        guard let _ = event.shortDescriptor else {
-            presentEventId = event.eventId
-            presentServiceId = eit.serviceName
-            return []
-        }
-        // ToDo: スクランブル時の処理
-        //print(eit.header)
-        //printHexDumpForBytes(data)
-        //print(eit)
-        //print(event)
-        presentEventId = event.eventId
-        presentServiceId = eit.serviceName
     }
     return []
 }
