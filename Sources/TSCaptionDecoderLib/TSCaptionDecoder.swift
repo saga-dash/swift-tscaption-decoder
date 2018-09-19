@@ -160,7 +160,7 @@ public func TSCaptionDecoderSub(data: Data, options: Options) throws -> [Unit] {
         //print(eit.header)
         //printHexDumpForBytes(data)
         //print(eit)
-        print(event)
+        //print(event)
         presentEventId = event.eventId
         presentServiceId = eit.serviceName
     }
