@@ -15,6 +15,7 @@ var targetPMTPID: UInt16 = 0xFFFF
 var targetPCRPID: UInt16 = 0xFFFF
 var targetCaptionPID: UInt16 = 0xFFFF
 var stock: Dictionary<UInt16, Data> = [:]
+var stock2: Dictionary<UInt16, Data> = [:]
 var presentEventId: UInt16? = nil
 var presentServiceId: String? = nil
 var pcr: [UInt8]? = nil
@@ -32,20 +33,20 @@ public func TSCaptionDecoderSub(data: Data, options: Options) throws -> [Unit] {
     }
     var data = data
     // はじめのunitではない&&前のデータがない
-    if (!header.isStartPacket && stock[header.PID] == nil) {
+    if (!header.isStartPacket && stock2[header.PID] == nil) {
         return []
     }
     // 前のデータと結合
-    if (stock[header.PID] != nil) {
+    if (stock2[header.PID] != nil) {
         // ストックが存在し先頭TSならデータがおかしいので置き換える
         if header.isStartPacket {
-            stock[header.PID] = data
+            stock2[header.PID] = data
         } else {
             // PIDに対してCounterが正常に加算されているか
-            if isCorrectCounter(stock[header.PID]!, data) {
-                data = stock[header.PID]! + header.payload
+            if isCorrectCounter(stock2[header.PID]!, data) {
+                data = stock2[header.PID]! + header.payload
             } else {
-                stock.removeValue(forKey: header.PID)
+                stock2.removeValue(forKey: header.PID)
                 return []
             }
         }
@@ -53,7 +54,7 @@ public func TSCaptionDecoderSub(data: Data, options: Options) throws -> [Unit] {
     header = try TransportPacket(data)
     if !header.enoughHeaderLength {
         // データが足りていなければ、ストックする
-        stock[header.PID] = data
+        stock2[header.PID] = data
         return []
     }
     // TODO Enumにする
@@ -63,7 +64,7 @@ public func TSCaptionDecoderSub(data: Data, options: Options) throws -> [Unit] {
         //print(header)
         guard let pat = try ProgramAssociationTable(data, header) else {
             // データが足りていなければ、ストックする
-            stock[header.PID] = data
+            stock2[header.PID] = data
             return []
         }
         //printHexDumpForBytes(bytes: pat.programAssociationSection.hexDump)
@@ -95,11 +96,11 @@ public func TSCaptionDecoderSub(data: Data, options: Options) throws -> [Unit] {
     else if header.PID == targetPMTPID {
         guard let pmt = try ProgramMapTable(data) else {
             // データが足りていなければ、ストックする
-            stock[header.PID] = data
+            stock2[header.PID] = data
             return []
         }
         defer {
-            stock.removeValue(forKey: header.PID)
+            stock2.removeValue(forKey: header.PID)
         }
         //printHexDumpForBytes(data)
         //print(pmt)
@@ -129,11 +130,11 @@ public func TSCaptionDecoderSub(data: Data, options: Options) throws -> [Unit] {
         }
         guard let eit = try EventInformationTable(data) else {
             // データが足りていなければ、ストックする
-            stock[header.PID] = data
+            stock2[header.PID] = data
             return []
         }
         defer {
-            stock.removeValue(forKey: header.PID)
+            stock2.removeValue(forKey: header.PID)
         }
         if eit.tableId != 0x4E {
             return []
