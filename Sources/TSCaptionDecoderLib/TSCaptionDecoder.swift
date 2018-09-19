@@ -32,13 +32,13 @@ public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] 
     }
     var data = data
     // はじめのunitではない&&前のデータがない
-    if (header.payloadUnitStartIndicator != 0x01 && stock[header.PID] == nil) {
+    if (!header.isStartPacket && stock[header.PID] == nil) {
         return []
     }
     // 前のデータと結合
     if (stock[header.PID] != nil) {
         // ストックが存在し先頭TSならデータがおかしいので置き換える
-        if header.payloadUnitStartIndicator == 0x01 {
+        if header.isStartPacket {
             stock[header.PID] = data
         } else {
             // PIDに対してCounterが正常に加算されているか

@@ -51,6 +51,18 @@ extension TransportPacket {
     var noPointerField: Bool {
         return adaptationField==nil && (isPes || payloadUnitStartIndicator != 0x01)
     }
+    var existPointerField: Bool {
+        return !isPes && payloadUnitStartIndicator == 0x01
+    }
+    public var isStartPacket: Bool {
+        let headerLength = length
+        // PSI
+        if existPointerField {
+            return data[headerLength-1] == 0x00
+        }
+        // PES
+        return payloadUnitStartIndicator == 0x01
+    }
     public var payload: [UInt8] {
         let bytes = [UInt8](data)
         return Array(bytes.suffix(bytes.count - self.length)) // HeaderLength + Payload = 188
