@@ -28,6 +28,11 @@ public struct EventInformationTable {
         }
         let tableId = programAssociationSection.tableId
         let bytes = programAssociationSection.payload
+        if tableId < 0x4E || 0x5F < tableId  || tableId == 0x4F {
+            // 他ストリーム
+            return nil
+        }
+    
         // 5 byte(programAssociationSection終わりまで)
         if bytes.count < Int(programAssociationSection.sectionLength)-5 {
             return nil
@@ -40,10 +45,6 @@ public struct EventInformationTable {
         if !crc32(crcBytes, crcPayload) {
             // ToDo:
             //print("\(String(format: "0x%04x", CRC_16))", "\(String(format: "0x%04x", calcCRC32))")
-            return nil
-        }
-        if tableId < 0x4E || 0x5F < tableId  || tableId == 0x4F {
-            // 他ストリーム
             return nil
         }
 
