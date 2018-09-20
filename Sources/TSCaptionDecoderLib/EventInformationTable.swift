@@ -39,7 +39,7 @@ public struct EventInformationTable {
         }
         // CRC
         let headerLength = 3 // 3 byte(sectionLengthまで)
-        let wrapper_crc = ByteArray(header.payload)
+        let wrapper_crc = ByteArray(header.payload())
         let crcBytes = try wrapper_crc.take(Int(programAssociationSection.sectionLength) + headerLength - 4)
         let crcPayload = UInt32(try wrapper_crc.get(num: 4))
         if !crc32(crcBytes, crcPayload) {

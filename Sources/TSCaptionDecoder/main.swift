@@ -78,7 +78,6 @@ let main = command(
                 exit(-1)
             }
             do {
-                _ = try TSCaptionDecoderSub(data: data, options: options)
                 let result = try TSCaptionDecoderMain(data: data, options: options)
                 for unit in result {
                     //print(unit.str)

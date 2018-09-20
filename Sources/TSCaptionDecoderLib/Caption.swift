@@ -40,7 +40,7 @@ public struct Caption {
     public let payload: [UInt8]                    //  n byte
     public init?(_ data: Data) throws {
         self.header = try getHeader(data, isPes: true)
-        let bytes = header.payload
+        let bytes = header.payload()
         if !(bytes[0] == 0x00 && bytes[1] == 0x0 && bytes[2] == 0x01) {
             return nil
         }

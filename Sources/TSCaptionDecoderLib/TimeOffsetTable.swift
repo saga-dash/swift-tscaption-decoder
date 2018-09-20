@@ -22,7 +22,7 @@ public struct TimeOffsetTable {
     // ToDo:
     public init?(_ data: Data, _ _header: TransportPacket? = nil) throws {
         self.header = try getHeader(data, _header)
-        let bytes = header.payload
+        let bytes = header.payload()
         let wrapper = ByteArray(bytes)
         self.tableId = try wrapper.get()
         if tableId != 0x73 {

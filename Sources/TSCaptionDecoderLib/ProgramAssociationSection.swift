@@ -25,7 +25,7 @@ public struct ProgramAssociationSection {
     public let payload: [UInt8]                    //  n  byte
     public init(_ data: Data, _ _header: TransportPacket? = nil) throws {
         self.header = try getHeader(data, _header)
-        let bytes = header.payload
+        let bytes = header.payload()
         let wrapper = ByteArray(bytes)
         self.tableId = try wrapper.get()
         self.sectionSyntaxIndicator = (try wrapper.get(doMove: false)&0x80)>>7
@@ -53,6 +53,6 @@ extension ProgramAssociationSection : CustomStringConvertible {
 }
 extension ProgramAssociationSection {
     public var hexDump: [UInt8] {
-        return header.payload
+        return header.payload()
     }
 }

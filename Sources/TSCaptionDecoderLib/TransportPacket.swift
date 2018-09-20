@@ -48,29 +48,29 @@ extension TransportPacket {
         }
         return try? AdaptationField(data)
     }
-    var noPointerField: Bool {
-        return adaptationField==nil && (isPes || payloadUnitStartIndicator != 0x01)
-    }
-    var existPointerField: Bool {
+    func existPointerField(_ isPes: Bool) -> Bool {
         return !isPes && payloadUnitStartIndicator == 0x01
     }
-    public var isStartPacket: Bool {
-        let headerLength = length
+    public func isStartPacket(_ isPes: Bool? = nil) -> Bool {
+        let isPes = isPes ?? self.isPes
+        let headerLength = self.headerLength()
         // PSI
-        if existPointerField {
+        if existPointerField(isPes) {
             return data[headerLength-1] == 0x00
         }
         // PES
         return payloadUnitStartIndicator == 0x01
     }
-    public var payload: [UInt8] {
+    public func payload(_ isPes: Bool? = nil) -> [UInt8] {
+        let isPes = isPes ?? self.isPes
         let bytes = [UInt8](data)
-        return Array(bytes.suffix(bytes.count - self.length)) // HeaderLength + Payload = 188
+        return Array(bytes.suffix(bytes.count - self.headerLength(isPes))) // HeaderLength + Payload = 188
     }
-    public var length: Int {
+    func headerLength(_ isPes: Bool? = nil) -> Int {
+        let isPes = isPes ?? self.isPes
         let headerLength = 4 // Header
-            + (numericCast(adaptationField?.adaptationFieldLength ?? 0)) // AdaptationFieldLength
-            + (noPointerField ? 0 : 1) // pointer_field
+            + (numericCast(adaptationField != nil ? adaptationField!.adaptationFieldLength + 1 : 0)) // AdaptationFieldLength
+            + (existPointerField(isPes) ? 1 : 0) // pointer_field
         return Int(headerLength)
     }
     public var enoughHeaderLength: Bool {
@@ -110,7 +110,7 @@ extension TransportPacket : CustomStringConvertible {
             + ", transportScramblingControl: \(String(format: "0x%x", transportScramblingControl))"
             + ", (adaptationFlag: \(adaptationFlag)"
             + ", payloadFlag: \(payloadFlag))"
-            + ", length: \(String(format: "0x%02x", length))"
+            + ", headerLength: \(String(format: "0x%02x", headerLength(isPes)))"
             + ", continuityCounter: \(String(format: "0x%02x", continuityCounter))"
             + ", PCR: \(PCRStr ?? "")"
             + ")"

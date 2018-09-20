@@ -24,7 +24,7 @@ public struct PacketizedElementaryStream {
     public let payload: [UInt8]                    //  n byte
     public init?(_ data: Data, _ _header: TransportPacket? = nil) throws {
         self.header = try getHeader(data, _header, isPes: true)
-        let bytes = header.payload
+        let bytes = header.payload()
         let wrapper = ByteArray(bytes)
         self.packetStartCodePrefix = UInt32(try wrapper.get(num: 3))
         self.streamId = try wrapper.get()
@@ -85,7 +85,7 @@ extension PacketizedElementaryStream : CustomStringConvertible {
 }
 extension PacketizedElementaryStream {
     public var hexDump: [UInt8] {
-        return header.payload
+        return header.payload()
     }
     public var ptsStr: String {
         guard let pts = pts else {
