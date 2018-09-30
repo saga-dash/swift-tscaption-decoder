@@ -89,7 +89,7 @@ struct Font {
             // ToDo: 定義探す
             let fontLength = Int(regionX!) * Int(regionY!) * Int(geometricDataLength!)/8
             try wrapper.setIndex(wrapper.getIndex() - 5)
-            self.payload = try wrapper.take(fontLength)
+            self.payload = try wrapper.take(fontLength + 5)
         } else {
             self.depth = try wrapper.get()
             self.width = try wrapper.get()
@@ -100,7 +100,7 @@ struct Font {
             // depth+2: 色の深度、 (depth+2)/2: 使用するbit数
             let fontLength = Int(depth!+2)/2 * Int(width!) * Int(height!)/8
             try wrapper.setIndex(wrapper.getIndex() - 4)
-            self.payload = try wrapper.take(fontLength)
+            self.payload = try wrapper.take(fontLength + 4)
         }
     }
 }
