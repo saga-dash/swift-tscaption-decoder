@@ -88,6 +88,7 @@ struct Font {
             self.geometricDataLength = UInt16(try wrapper.get(num: 2))
             // ToDo: 定義探す
             let fontLength = Int(regionX!) * Int(regionY!) * Int(geometricDataLength!)/8
+            try wrapper.setIndex(wrapper.getIndex() - 5)
             self.payload = try wrapper.take(fontLength)
         } else {
             self.depth = try wrapper.get()
@@ -98,6 +99,7 @@ struct Font {
             self.geometricDataLength = nil
             // depth+2: 色の深度、 (depth+2)/2: 使用するbit数
             let fontLength = Int(depth!+2)/2 * Int(width!) * Int(height!)/8
+            try wrapper.setIndex(wrapper.getIndex() - 4)
             self.payload = try wrapper.take(fontLength)
         }
     }
