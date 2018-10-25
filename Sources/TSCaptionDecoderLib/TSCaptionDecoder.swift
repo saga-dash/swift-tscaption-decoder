@@ -19,6 +19,7 @@ var presentEventId: UInt16? = nil
 var presentServiceId: String? = nil
 var pcr: [UInt8]? = nil
 var tsDate: Date = Date()
+var tsDatePcr: [UInt8]? = nil
 
 func storePacket(PID: UInt16, header: TransportPacket, isPes: Bool = false) throws -> Data? {
     var header = header
@@ -101,6 +102,7 @@ public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] 
         }
         //print("TOT", convertJSTStr(date) ?? "error convert time")
         tsDate = date
+        tsDatePcr = pcr
         return []
     }
     // PMT?
@@ -208,6 +210,7 @@ public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] 
                 result.eventId = presentEventId != nil ? "\(String(format: "%05d", presentEventId!))" : nil
                 result.serviceId = presentServiceId
                 result.pts = pickTimeStamp(caption.pesHeader.pts)
+                result.appearanceTime = pickAppearanceTime(tsDate: tsDate, tsDatePcr: tsDatePcr, pcr: pcr)
                 return result
             case 0x30, 0x31:
                 //print(data.map({String(format: "0x%02x", $0)}).joined(separator: ", "))

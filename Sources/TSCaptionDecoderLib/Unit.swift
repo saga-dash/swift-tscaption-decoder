@@ -13,12 +13,14 @@ public struct Unit: Codable {
     public var eventId: String?
     public var serviceId: String?
     public var pts: UInt64?
+    public var appearanceTime: UInt64?
     public let control: [Control]
-    public init(str: String, control: [Control], eventId: String? = nil, serviceId: String? = nil, pts: UInt64? = nil) {
+    public init(str: String, control: [Control], eventId: String? = nil, serviceId: String? = nil, pts: UInt64? = nil, appearanceTime: UInt64? = nil) {
         self.str = str
         self.eventId = eventId
         self.serviceId = serviceId
         self.pts = pts
+        self.appearanceTime = appearanceTime
         self.control = control
     }
 }
