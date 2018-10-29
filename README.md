@@ -35,3 +35,13 @@ Options:
     -f  --file # ない場合標準入力を待機
     -c  --componentTag - subtitle, subtitle{1-7}, teletext, teletext{1-7}
 ```
+
+## Output
+
+- Unit
+    - str: 字幕文字列(空文字)
+    - eventId: EIT-PのeventId
+    - serviceId: EIT-PのserviceIdから変換
+    - pts: PresentationTimeStamp(MPEG2-TS)
+    - appearanceTime: ToTとPCRから計算
+    - control: ARIB8文字デコード
