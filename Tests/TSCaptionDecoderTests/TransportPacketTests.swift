@@ -85,7 +85,7 @@ final class TransportPacketTests: XCTestCase {
         let data = Data(bytes: bytes)
         let header = try TransportPacket(data)
         print(header)
-        guard let eit = try EventInformationTable4Bug(data) else {
+        guard let eit = try EventInformationTable(data) else {
             XCTFail()
             return
         }
