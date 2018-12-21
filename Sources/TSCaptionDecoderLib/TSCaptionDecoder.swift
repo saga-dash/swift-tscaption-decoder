@@ -227,6 +227,7 @@ public func TSCaptionDecoderMain(data: Data, options: Options) throws -> [Unit] 
                 result.eventId = presentEventId != nil ? "\(String(format: "%05d", presentEventId!))" : nil
                 result.serviceId = presentServiceId
                 result.pts = pickTimeStamp(caption.pesHeader.pts)
+                result.appearanceTime = pickAppearanceTime(tsDate: tsDate, tsDatePcr: tsDatePcr, pcr: pcr)
                 return result
             default:
                 print("dataUnit.dataUnitParameter: \(dataUnit.dataUnitParameter)")
