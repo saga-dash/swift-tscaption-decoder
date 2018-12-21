@@ -86,3 +86,14 @@ public func pickTimeStamp(_ time: [UInt8]?) -> UInt64? {
     let timestamp: UInt64 = UInt64(time[0]&0x0E)<<29 | UInt64(time[1])<<22 | UInt64(time[2]&0xFE)<<14 | UInt64(time[3])<<7 | UInt64(time[4]&0xFE)>>1
     return timestamp
 }
+
+public func pickAppearanceTime(tsDate: Date, tsDatePcr: [UInt8]?, pcr: [UInt8]?) -> UInt64? {
+    guard let totPcr = pickPCR(tsDatePcr), let captionPcr = pickPCR(pcr) else {
+        return nil
+    }
+    if totPcr > captionPcr {
+        //captionPcrオーバーフロー
+        return UInt64(tsDate.timeIntervalSince1970) + (captionPcr/90000 + 0x1FFFFFFFF/90000 - totPcr/90000)
+    }
+    return UInt64(tsDate.timeIntervalSince1970) + (captionPcr/90000 - totPcr/90000)
+}
